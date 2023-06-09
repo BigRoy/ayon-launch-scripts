@@ -16,13 +16,13 @@ in your studio. This can be configured in **Studio Settings > System > Modules >
 When currently inside an environment that has the OpenPype context environment
 variables for `AVALON_ASSET`, `AVALON_TASK`, etc. you can just run:
 
-```
+```shell
 openpype_console module launch_scripts run-script -app maya/2023 -path /path/to/script.py
 ```
 
 But in most case you'll need to explicitly provide the context you want to run
 the script in:
-```
+```shell
 openpype_console module launch_scripts run-script 
 -project my_project
 -asset hero
@@ -37,7 +37,7 @@ to the same command and should usually be one a single line._
 
 The module also exposes a `publish` command. Usable like so:
 
-```
+```shell
 openpype_console module launch_scripts publish
 -project my_project
 -asset hero
@@ -74,3 +74,16 @@ can run against it. Currently only the following hosts are supported:
 - Houdini: ok
 - Maya: ok - _note that playblasting and thus publishing reviews is not supported in Maya headless mode_
 - Nuke: implemented but untested (includes Nuke X and Nuke Studio)
+
+### Running against source code
+
+Instead of running `openpype_console module` you can also run `.poetry\bin\poetry run python start.py module`. As such an example usage against run code could look like:
+
+```shell
+.poetry\bin\poetry run python start.py module launch_scripts publish
+-project my_project
+-asset hero
+-task modeling
+-app maya/2023 
+-path /path/to/workfile.ma
+```
