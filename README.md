@@ -31,7 +31,7 @@ openpype_console module launch_scripts run-script
 -path /path/to/script.py
 ```
 _The arguments are on new-lines here solely for readability. They are arguments
-to the same command and should usually be one a single line._
+to the same command and should usually be on a single line._
 
 #### Running a headless publish
 
