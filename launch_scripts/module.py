@@ -14,7 +14,7 @@ from .run_script import (
 
 class LaunchScriptsModule(OpenPypeModule):
     label = "Publish Workfile"
-    name = "launch_scripts_aa"
+    name = "launch_scripts"
 
     def initialize(self, modules_settings):
         self.enabled = True
