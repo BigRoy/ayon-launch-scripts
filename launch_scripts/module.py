@@ -133,7 +133,7 @@ def publish(project_name,
         env["PUBLISH_PRE_SCRIPTS"] = os.pathsep.join(pre_publish_script)
     if post_publish_script:
         print(f"Post scripts: {', '.join(post_publish_script)}")
-        env["PUBLISH_PRE_SCRIPTS"] = os.pathsep.join(post_publish_script)
+        env["PUBLISH_POST_SCRIPTS"] = os.pathsep.join(post_publish_script)
     if comment:
         env["PUBLISH_COMMENT"] = comment
 
