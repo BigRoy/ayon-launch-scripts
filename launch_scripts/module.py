@@ -1,6 +1,7 @@
 """Launch scripts module."""
 import os
 import time
+import sys
 
 import click
 
@@ -79,7 +80,9 @@ def run_script(project_name,
     )
     _print_stdout_until_timeout(launched_app, timeout, app_name)
 
-    print("Application shut down.")
+    launched_app.wait()  # ensure we wait so that we can get the return code
+    print(f"Application shut down with returncode: {launched_app.returncode}")
+    sys.exit(launched_app.returncode)  # Transfer the error code
 
 
 @cli_main.command()
@@ -179,7 +182,9 @@ def publish(project_name,
     )
     _print_stdout_until_timeout(launched_app, timeout, app_name)
 
-    print("Application shut down.")
+    launched_app.wait()  # ensure we wait so that we can get the return code
+    print(f"Application shut down with returncode: {launched_app.returncode}")
+    sys.exit(launched_app.returncode)  # Transfer the error code
 
 
 def _print_stdout_until_timeout(popen,
