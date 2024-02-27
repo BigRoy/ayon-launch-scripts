@@ -13,7 +13,9 @@ log = logging.getLogger(__name__)
 
 def run_path(path):
     """Run Python script by filepath with current globals"""
-    return runpy.run_path(path, init_globals=globals())
+    return runpy.run_path(path,
+                          init_globals=globals(),
+                          run_name='__main__')
 
 
 def main():

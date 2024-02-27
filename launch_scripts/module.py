@@ -5,6 +5,8 @@ import time
 import click
 
 from openpype.modules import OpenPypeModule
+from openpype.modules.interfaces import IPluginPaths
+
 
 from .lib import find_app_variant
 from .run_script import (
@@ -12,7 +14,7 @@ from .run_script import (
 )
 
 
-class LaunchScriptsModule(OpenPypeModule):
+class LaunchScriptsModule(OpenPypeModule, IPluginPaths):
     label = "Publish Workfile"
     name = "launch_scripts"
 
@@ -21,6 +23,16 @@ class LaunchScriptsModule(OpenPypeModule):
 
     def cli(self, click_group):
         click_group.add_command(cli_main)
+
+    def get_plugin_paths(self):
+        """Implementation of IPluginPaths to get plugin paths."""
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        return {
+            "actions": [os.path.join(current_dir,
+                                     "plugins",
+                                     "launcher_actions")],
+        }
 
 
 @click.group(LaunchScriptsModule.name,
@@ -128,12 +140,27 @@ def publish(project_name,
     env = os.environ.copy()
     env["PUBLISH_WORKFILE"] = filepath
 
-    if pre_publish_script:
-        print(f"Pre scripts: {', '.join(pre_publish_script)}")
-        env["PUBLISH_PRE_SCRIPTS"] = os.pathsep.join(pre_publish_script)
-    if post_publish_script:
-        print(f"Post scripts: {', '.join(post_publish_script)}")
-        env["PUBLISH_PRE_SCRIPTS"] = os.pathsep.join(post_publish_script)
+    # Process scripts input arguments
+    for key, scripts in {
+        "PUBLISH_PRE_SCRIPTS": pre_publish_script,
+        "PUBLISH_POST_SCRIPTS": post_publish_script
+    }.items():
+        script_paths = []
+        for script in scripts:
+            # Allow referring to locally embedded scripts with just their
+            # names like e.g. `update_all_containers`
+            if not os.path.isabs(script) and not script.endswith(".py"):
+                script_path = os.path.join(os.path.dirname(__file__),
+                                           "pre_post_scripts",
+                                           f"{script}.py")
+                print(f"Resolving script '{script}' as {script_path}")
+                if not os.path.isfile(script_path):
+                    raise FileNotFoundError(f"Script not found: {script_path}")
+            else:
+                script_path = script
+            script_paths.append(script_path)
+        env[key] = os.pathsep.join(script_paths)
+
     if comment:
         env["PUBLISH_COMMENT"] = comment
 
