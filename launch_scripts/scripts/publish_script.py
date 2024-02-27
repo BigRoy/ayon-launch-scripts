@@ -9,6 +9,7 @@ from openpype.pipeline import registered_host
 from openpype.host import IPublishHost
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 def run_path(path):
