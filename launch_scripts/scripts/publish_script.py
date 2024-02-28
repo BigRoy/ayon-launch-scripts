@@ -5,6 +5,7 @@ import runpy
 import pyblish.api
 import pyblish.util
 
+from openpype.pipeline.create import CreateContext
 from openpype.pipeline import registered_host
 from openpype.host import IPublishHost
 
@@ -74,11 +75,8 @@ def publish():
     error_format = "Failed {plugin.__name__}: {error} -- {error.traceback}"
 
     host = registered_host()
-    is_new_publisher = isinstance(host, IPublishHost)
-    if is_new_publisher:
+    if isinstance(host, IPublishHost):
         # New publisher host
-        # TODO: Test this functionality
-        from openpype.pipeline.create import CreateContext
         create_context = CreateContext(host)
 
         # TODO: Allow to tweak any values on existing instances
