@@ -1,3 +1,5 @@
+import os
+import platform
 import logging
 from json import JSONDecodeError
 from typing import Optional, Tuple, Dict
@@ -24,6 +26,22 @@ def submit_to_deadline(
 ):
     if aux_files is None:
         aux_files = []
+
+    # Some keys to always transfer into the Deadline job if the local
+    # environment has them. So we submit them along to Deadline as
+    # environment key values in the Job's info.
+    keys = [
+        "FTRACK_API_KEY",
+        "FTRACK_API_USER",
+        "FTRACK_SERVER",
+        "OPENPYPE_SG_USER"
+    ]
+    env = {}
+    for key in keys:
+        if key in os.environ:
+            env[key] = os.environ[key]
+    for index, (key, value) in enumerate(env.items()):
+        job_info[f"EnvironmentKeyValue{index}"] = f"{key}={value}"
 
     payload = {
         "JobInfo": job_info,
@@ -134,7 +152,6 @@ class PublishLastWorkfile(LauncherAction):
         if not workfile:
             raise RuntimeError("No existing workfile found.")
 
-        #print(f"Publish in app '{app_name}' from: {workfile}")
         args = [
             "module",
             "launch_scripts",
@@ -151,12 +168,18 @@ class PublishLastWorkfile(LauncherAction):
         # Always update containers first
         args.extend(["-pre", "update_all_containers"])
 
+        # Define some labeling
+        batch_name = f"{project_name} | Publish workfiles"
+        filename = os.path.basename(workfile)
+        name = f"{asset_name} > {task_name} > {app_name} | {filename}"
+
         submit_to_deadline(
             job_info={
                 "Plugin": "OpenPype",
-                "BatchName": "Publish workfile",
-                "Name": "Publish workfile {}".format(workfile),
+                "BatchName": batch_name,
+                "Name": name,
                 "UserName": get_openpype_username(),
+                "MachineName": platform.node(),
 
                 # Error out early on this job since it's unlikely
                 # a subsequent publish will suddenly succeed and
