@@ -23,13 +23,13 @@ When currently inside an environment that has the OpenPype context environment
 variables for `AYON_FOLDER_PATH`, `AYON_TASK_NAME`, etc. you can just run:
 
 ```shell
-ayon_console module launch_scripts run-script -app maya/2023 -path /path/to/script.py
+ayon_console addon launch_scripts run-script -app maya/2023 -path /path/to/script.py
 ```
 
 But in most case you'll need to explicitly provide the context you want to run
 the script in:
 ```shell
-ayon_console module launch_scripts run-script 
+ayon_console addon launch_scriptsrun-script 
 -project my_project
 -asset hero
 -task modeling
@@ -44,7 +44,7 @@ to the same command and should usually be on a single line._
 The module also exposes a `publish` command. Usable like so:
 
 ```shell
-ayon_console module launch_scripts publish
+ayon_console addon launch_scriptspublish
 -project my_project
 -asset hero
 -task modeling
@@ -83,10 +83,12 @@ can run against it. Currently only the following hosts are supported:
 
 ### Running against source code
 
-Instead of running `ayon_console module` you can also run `.poetry\bin\poetry run python start.py module`. As such an example usage against run code could look like:
+Instead of running `ayon_console addon` you can also run AYON launcher in dev mode: `ayon-launcher/tools/ayon_console.bat --use-dev addon launch_scripts`. 
+
+As such an example usage against run code could look like:
 
 ```shell
-.poetry\bin\poetry run python start.py module launch_scripts publish
+ayon-launcher/tools/ayon_console.bat --use-dev addon launch_scripts publish
 -project my_project
 -asset hero
 -task modeling
