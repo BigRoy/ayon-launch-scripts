@@ -2,9 +2,9 @@
 import os
 import runpy
 
-from openpype.pipeline import install_host
-from openpype.hosts.fusion.api import FusionHost
-from openpype.hosts.fusion.api.lib import get_fusion_module
+from ayon_core.pipeline import install_host
+from ayon_fusion.api import FusionHost
+from ayon_fusion.api.lib import get_fusion_module
 
 fusion = get_fusion_module()
 

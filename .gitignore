@@ -45,3 +45,6 @@ Temporary Items
 .env
 dump.sql
 test_localsystem.txt
+
+# Created package
+package/

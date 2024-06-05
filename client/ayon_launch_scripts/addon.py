@@ -1,22 +1,20 @@
-"""Launch scripts module."""
+"""Launch scripts addon for AYON."""
 import os
 import time
 import sys
 
-import click
-
-from openpype.modules import OpenPypeModule
-from openpype.modules.interfaces import IPluginPaths
-
+from ayon_core.modules import click_wrap, AYONAddon, IPluginPaths
 
 from .lib import find_app_variant
 from .run_script import (
     run_script as _run_script
 )
+from .version import __version__
 
 
-class LaunchScriptsModule(OpenPypeModule, IPluginPaths):
+class LaunchScriptsAddon(AYONAddon, IPluginPaths):
     label = "Publish Workfile"
+    version = __version__
     name = "launch_scripts"
 
     def initialize(self, modules_settings):
@@ -36,34 +34,34 @@ class LaunchScriptsModule(OpenPypeModule, IPluginPaths):
         }
 
 
-@click.group(LaunchScriptsModule.name,
-             help="Publish Workfile cli commands.")
+@click_wrap.group(LaunchScriptsAddon.name,
+                  help="Publish Workfile cli commands.")
 def cli_main():
     pass
 
 
 @cli_main.command()
-@click.option("-project", "--project_name",
-              required=True,
-              envvar="AVALON_PROJECT",
-              help="Project name")
-@click.option("-asset", "--asset_name",
-              required=True,
-              envvar="AVALON_ASSET",
-              help="Asset name")
-@click.option("-task", "--task_name",
-              required=True,
-              envvar="AVALON_TASK",
-              help="Task name")
-@click.option("-path", "--filepath",
-              required=True,
-              help="Absolute filepath to workfile to publish")
-@click.option("-app", "--app_name",
-              envvar="AVALON_APP",
-              required=True,
-              help="App name, specific variant 'maya/2023' or just 'maya' to "
-                   "take latest found variant for which current machine has "
-                   "an existing executable.")
+@click_wrap.option("-project", "--project_name",
+                   required=True,
+                   envvar="AVALON_PROJECT",
+                   help="Project name")
+@click_wrap.option("-asset", "--asset_name",
+                   required=True,
+                   envvar="AVALON_ASSET",
+                   help="Asset name")
+@click_wrap.option("-task", "--task_name",
+                   required=True,
+                   envvar="AVALON_TASK",
+                   help="Task name")
+@click_wrap.option("-path", "--filepath",
+                   required=True,
+                   help="Absolute filepath to workfile to publish")
+@click_wrap.option("-app", "--app_name",
+                   envvar="AVALON_APP",
+                   required=True,
+                   help="App name, specific variant 'maya/2023' or just 'maya' to "
+                        "take latest found variant for which current machine has "
+                        "an existing executable.")
 def run_script(project_name,
                asset_name,
                task_name,
@@ -73,7 +71,7 @@ def run_script(project_name,
     app_name = find_app_variant(app_name)
     launched_app = _run_script(
         project_name=project_name,
-        asset_name=asset_name,
+        folder_path=asset_name,
         task_name=task_name,
         app_name=app_name,
         script_path=filepath
@@ -86,40 +84,44 @@ def run_script(project_name,
 
 
 @cli_main.command()
-@click.option("-project", "--project_name",
-              required=True,
-              envvar="AVALON_PROJECT",
-              help="Project name")
-@click.option("-asset", "--asset_name",
-              required=True,
-              envvar="AVALON_ASSET",
-              help="Asset name")
-@click.option("-task", "--task_name",
-              required=True,
-              envvar="AVALON_TASK",
-              help="Task name")
-@click.option("-path", "--filepath",
-              required=True,
-              help="Absolute filepath to workfile to publish")
-@click.option("-app", "--app_name",
-              envvar="AVALON_APP_NAME",
-              required=True,
-              help="App name, specific variant 'maya/2023' or just 'maya' to "
-                   "take latest found variant for which current machine has "
-                   "an existing executable.")
-@click.option("-pre", "--pre_publish_script",
-              multiple=True,
-              help="Pre process script path")
-@click.option("-post", "--post_publish_script",
-              multiple=True,
-              help="Post process script path")
-@click.option("-c", "--comment",
-              help="Publish comment")
+@click_wrap.option("-project", "--project_name",
+                   required=True,
+                   envvar="AVALON_PROJECT",
+                   help="Project name")
+@click_wrap.option("-asset", "--asset_name",
+                   required=True,
+                   envvar="AVALON_ASSET",
+                   help="Asset name")
+@click_wrap.option("-task", "--task_name",
+                   required=True,
+                   envvar="AVALON_TASK",
+                   help="Task name")
+@click_wrap.option("-path", "--filepath",
+                   required=True,
+                   help="Absolute filepath to workfile to publish")
+@click_wrap.option("-app", "--app_name",
+                   envvar="AVALON_APP_NAME",
+                   required=True,
+                   help="App name, specific variant 'maya/2023' or just 'maya'"
+                        " to take latest found variant for which current"
+                        " machine has an existing executable.")
+@click_wrap.option("-prework", "--pre_workfile_script",
+                   multiple=True,
+                   help="Pre process script path before workfile open")
+@click_wrap.option("-pre", "--pre_publish_script",
+                   multiple=True,
+                   help="Pre process script path")
+@click_wrap.option("-post", "--post_publish_script",
+                   multiple=True,
+                   help="Post process script path")
+@click_wrap.option("-c", "--comment",
+                   help="Publish comment")
 def publish(project_name,
-            asset_name,
+            folder_path,
             task_name,
             filepath,
             app_name=None,
+            pre_workfile_script=None,
             pre_publish_script=None,
             post_publish_script=None,
             comment=None,
@@ -133,7 +135,7 @@ def publish(project_name,
     # is to just open in the host instead and allow the script itself to open
     # a file.
 
-    print(f"Using context {project_name} > {asset_name} > {task_name}")
+    print(f"Using context {project_name} > {folder_path} > {task_name}")
     print(f"Publishing workfile: {filepath}")
 
     if not os.path.exists(filepath):
@@ -145,8 +147,9 @@ def publish(project_name,
 
     # Process scripts input arguments
     for key, scripts in {
+        "PUBLISH_PRE_WORKFILE_SCRIPTS": pre_workfile_script,
         "PUBLISH_PRE_SCRIPTS": pre_publish_script,
-        "PUBLISH_POST_SCRIPTS": post_publish_script
+        "PUBLISH_POST_SCRIPTS": post_publish_script,
     }.items():
         script_paths = []
         for script in scripts:
@@ -174,7 +177,7 @@ def publish(project_name,
     app_name = find_app_variant(app_name)
     launched_app = _run_script(
         project_name=project_name,
-        asset_name=asset_name,
+        folder_path=folder_path,
         task_name=task_name,
         app_name=app_name,
         script_path=script_path,

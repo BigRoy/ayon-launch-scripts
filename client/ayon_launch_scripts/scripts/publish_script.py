@@ -1,16 +1,12 @@
 import os
-import logging
 import runpy
 
 import pyblish.api
 import pyblish.util
 
-from openpype.pipeline.create import CreateContext
-from openpype.pipeline import registered_host
-from openpype.host import IPublishHost
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.pipeline import registered_host
+from ayon_core.host import IPublishHost
 
 
 def run_path(path):
@@ -28,6 +24,11 @@ def main():
     filepath = os.environ["PUBLISH_WORKFILE"]
 
     # Get optional inputs
+    pre_workfile_scripts = [
+        script for script in
+        os.environ.get("PUBLISH_PRE_WORKFILE_SCRIPTS", "").split(os.pathsep)
+        if script.strip()
+    ]
     pre_publish_scripts = [
         script for script in
         os.environ.get("PUBLISH_PRE_SCRIPTS", "").split(os.pathsep)
@@ -45,20 +46,24 @@ def main():
         host = registered_host()
         assert host, "Must have a registered host active."
 
+    for script in pre_workfile_scripts:
+        print(f"Running pre-workfile script: {script}")
+        run_path(script)
+
     # Open workfile, the application should've been launched with the matching
     # context for that workfile
-    log.info("Opening workfile: %s", filepath)
+    print(f"Opening workfile: {filepath}")
     host.open_file(filepath)
 
     for script in pre_publish_scripts:
-        log.info("Running pre-publish script: %s", script)
+        print(f"Running pre-publish script: {script}")
         run_path(script)
 
     # Trigger publish, catch errors
     success = publish()
 
     for script in post_publish_scripts:
-        log.info("Running post-publish script: %s", script)
+        print(f"Running post-publish script: {script}")
         run_path(script)
 
     if not success:
@@ -101,7 +106,7 @@ def publish():
             plugins=pyblish_plugins
     ):
         for record in result["records"]:
-            log.info("{}: {}".format(result["plugin"].label, record.msg))
+            print("{}: {}".format(result["plugin"].label, record.msg))
 
         # Exit as soon as any error occurs.
         if result["error"]:
@@ -109,12 +114,12 @@ def publish():
             #  on any error if it's not a Validation error, otherwise we'd want
             #  to report all validation errors
             error_message = error_format.format(**result)
-            log.error(error_message)
+            print(error_message)
             return False
 
     return True
 
 
 if __name__ == "__main__":
-    log.debug("Starting publish script...")
+    print(f"Starting publish script..")
     main()

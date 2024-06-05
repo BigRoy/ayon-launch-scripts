@@ -2,16 +2,14 @@ import os
 import sys
 import subprocess
 
-from openpype.lib import (
+from ayon_applications import (
     ApplicationManager,
+    ApplicationExecutableNotFound,
     ApplicationNotFound,
-    ApplictionExecutableNotFound,
-    get_app_environments_for_context
-)
-from openpype.lib.applications import (
     ApplicationLaunchContext,
     ApplicationExecutable
 )
+from ayon_applications.utils import get_app_environments_for_context
 
 
 def get_relative_executable(executable: ApplicationExecutable,
@@ -24,21 +22,27 @@ def get_relative_executable(executable: ApplicationExecutable,
 
 def run_script(
     project_name: str,
-    asset_name: str,
+    folder_path: str,
     task_name: str,
     app_name: str,
     script_path: str,
-    headless: bool=True,
-    start_last_workfile: bool=False,
-    env: dict=None
+    headless: bool = True,
+    start_last_workfile: bool = False,
+    env: dict = None
 ) -> subprocess.Popen:
     """Launch application with the given python script.
 
     Args:
         project_name (str): The project name.
-        asset_name (str): The asset name.
+        folder_path (str): The folder path.
         task_name (str): The task name.
+        app_name (str): The application name.
         script_path (List[str]): The python script to run.
+        headless (bool): Whether to run headless (True) or try and run with
+            a GUI (when False)
+        start_last_workfile (booL): Whether to launch with last workfile being
+            opened directly.
+        env (dict): Base environment to work with.
 
     Returns:
         Popen: The Blender process.
@@ -51,12 +55,12 @@ def run_script(
 
     executable = app.find_executable()
     if not executable:
-        raise ApplictionExecutableNotFound(app)
+        raise ApplicationExecutableNotFound(app)
 
     # Must-have for proper launch of app
     app_env = get_app_environments_for_context(
         project_name,
-        asset_name,
+        folder_path,
         task_name,
         app_name
     )
@@ -146,7 +150,7 @@ def run_script(
     data.update(dict(
         app_args=app_args,
         project_name=project_name,
-        asset_name=asset_name,
+        asset_name=folder_path,
         task_name=task_name,
         env=env,
         start_last_workfile=start_last_workfile,

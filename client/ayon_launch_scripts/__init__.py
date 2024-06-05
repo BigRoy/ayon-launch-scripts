@@ -4,6 +4,7 @@ If addon class or settings definition won't be here their definition won't
 be found by OpenPype discovery.
 """
 
-from .module import LaunchScriptsModule
+from .addon import LaunchScriptsAddon
+from .version import __version__
 
-__all__ = ("LaunchScriptsModule",)
+__all__ = ("LaunchScriptsAddon", "__version__")

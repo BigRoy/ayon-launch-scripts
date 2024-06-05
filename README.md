@@ -1,29 +1,35 @@
-### OpenPype Addon: Launch Script
+### AYON Addon Launch Script
 
-This defines a module/addon for OpenPype which exposes  a command line 
+This defines a module/addon for [AYON](https://ayon.ynput.io/) which exposes a command line 
 interface to run Python scripts within support host applications like Blender,
 Maya, Houdini and Fusion.
 
+_It's like AYON has gone headless!_
+
 ### Installation
 
-To install make sure the root is a discoverable path for OpenPype modules in
-in your studio. This can be configured in **Studio Settings > System > Modules > OpenPype Addon Paths** (`modules/addon_paths`).
+Create the AYON addon package using the `create_package.py` script similar to other AYON addons:
+```
+python ./create_package.py
+```
+
+Upload the addon package to your AYON server and add it to your bundle.
 
 ### Examples
 
 #### Running a headless script
 
 When currently inside an environment that has the OpenPype context environment
-variables for `AVALON_ASSET`, `AVALON_TASK`, etc. you can just run:
+variables for `AYON_FOLDER_PATH`, `AYON_TASK_NAME`, etc. you can just run:
 
 ```shell
-openpype_console module launch_scripts run-script -app maya/2023 -path /path/to/script.py
+ayon_console module launch_scripts run-script -app maya/2023 -path /path/to/script.py
 ```
 
 But in most case you'll need to explicitly provide the context you want to run
 the script in:
 ```shell
-openpype_console module launch_scripts run-script 
+ayon_console module launch_scripts run-script 
 -project my_project
 -asset hero
 -task modeling
@@ -38,7 +44,7 @@ to the same command and should usually be on a single line._
 The module also exposes a `publish` command. Usable like so:
 
 ```shell
-openpype_console module launch_scripts publish
+ayon_console module launch_scripts publish
 -project my_project
 -asset hero
 -task modeling
@@ -53,10 +59,10 @@ This will launch the host headless, then open the workfile and publish as usual.
 
 It will pass along these defaults from environment variables if you
 do not explicitly pass the relevant command line arguments:
-- `-project`: `AVALON_PROJECT`
-- `-asset`: `AVALON_ASSET`
-- `-task`: `AVALON_TASK`
-- `-host`: `AVALON_APP_NAME`
+- `-project`: `AYON_PROJECT_NAME`
+- `-folder_path`: `AYON_FOLDER_PATH`
+- `-task`: `AYON_TASK_NAME`
+- `-host`: `AYON_APP_NAME`
 
 ### Remarks
 
@@ -77,7 +83,7 @@ can run against it. Currently only the following hosts are supported:
 
 ### Running against source code
 
-Instead of running `openpype_console module` you can also run `.poetry\bin\poetry run python start.py module`. As such an example usage against run code could look like:
+Instead of running `ayon_console module` you can also run `.poetry\bin\poetry run python start.py module`. As such an example usage against run code could look like:
 
 ```shell
 .poetry\bin\poetry run python start.py module launch_scripts publish

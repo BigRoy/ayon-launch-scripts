@@ -1,20 +1,19 @@
 import os
 import logging
 
-from openpype.lib import StringTemplate
-from openpype.lib.applications import (
-    ApplicationManager
-)
-from openpype.pipeline import (
+from ayon_core.lib import StringTemplate
+from ayon_applications import ApplicationManager
+from ayon_core.pipeline import (
     registered_host,
-    legacy_io,
-    Anatomy,
+    Anatomy
 )
-from openpype.pipeline.workfile import (
+from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.pipeline.workfile import (
     get_workfile_template_key_from_context,
     get_last_workfile_with_version,
+    get_workdir_with_workdir_data
 )
-from openpype.pipeline.template_data import get_template_data_with_names
+from ayon_core.pipeline.template_data import get_template_data_with_names
 
 
 log = logging.getLogger(__name__)
@@ -22,21 +21,18 @@ log = logging.getLogger(__name__)
 
 def get_last_workfile_for_task(
     project_name=None,
-    asset_name=None,
+    folder_path=None,
     task_name=None,
     host_name=None,
-    scene_dir=None,
     extensions=None
 ):
     """Return last existing workfile version for a task.
 
     Args:
         project_name (Optional[str]): Project name. Defaults to active project.
-        asset_name (Optional[str]): Project name. Defaults to AVALON_ASSET.
-        task_name (Optional[str]): Project name. Defaults to AVALON_TASK.
-        host_name (Optional[str]): Project name. Defaults to AVALON_APP.
-        scene_dir (Optional[str]): Include this scene subfolder for the
-            workdir. Defaults to AVALON_SCENEDIR.
+        folder_path (Optional[str]): Folder path. Defaults to AYON_FOLDER_PATH.
+        task_name (Optional[str]): Task name. Defaults to AYON_TASK_NAME.
+        host_name (Optional[str]): Host name. Defaults to AYON_APP_NAME.
         extensions (list): Filename extensions to look for. This defaults
             to retrieving the extensions from the currently registered host.
 
@@ -46,54 +42,55 @@ def get_last_workfile_for_task(
     """
     # Default fallbacks
     if project_name is None:
-        project_name = legacy_io.active_project()
-    if asset_name is None:
-        asset_name = legacy_io.Session["AVALON_ASSET"]
+        project_name = get_current_project_name()
+    if folder_path is None:
+        folder_path = os.environ["AYON_FOLDER_PATH"]
     if task_name is None:
-        task_name = legacy_io.Session["AVALON_TASK"]
+        task_name = os.environ["AYON_TASK_NAME"]
     if host_name is None:
-        host_name = os.environ["AVALON_APP"]
-    if scene_dir is None:
-        scene_dir = os.environ.get("AVALON_SCENEDIR")
-
-    log.debug(
-        "Searching last workfile for "
-        f"{project_name} > {asset_name} > {task_name} (host: {host_name})"
-    )
-
-    template_key = get_workfile_template_key_from_context(
-        asset_name,
-        task_name,
-        host_name,
-        project_name=project_name
-    )
-    anatomy = Anatomy(project_name)
-
-    data = get_template_data_with_names(
-        project_name, asset_name, task_name, host_name
-    )
-    data["root"] = anatomy.roots
-    file_template = anatomy.templates[template_key]["file"]
-
+        host_name = os.environ["AYON_APP_NAME"]
     if extensions is None:
         host = registered_host()
         extensions = host.get_workfile_extensions()
 
-    folder_template = anatomy.templates[template_key]["folder"]
-    work_root = StringTemplate.format_strict_template(
-        folder_template, data
+    log.debug(
+        "Searching last workfile for "
+        f"{project_name} > {folder_path} > {task_name} (host: {host_name})"
     )
-    if scene_dir:
-        work_root = os.path.join(work_root, scene_dir)
 
+    template_key = get_workfile_template_key_from_context(
+        project_name=project_name,
+        folder_path=folder_path,
+        task_name=task_name,
+        host_name=host_name,
+    )
+
+    # Anatomy and workfile template data
+    anatomy = Anatomy(project_name)
+    data = get_template_data_with_names(
+        project_name, folder_path, task_name, host_name
+    )
+    data["root"] = anatomy.roots
+
+    # Work root
+    work_root = get_workdir_with_workdir_data(
+        workdir_data=data,
+        project_name=project_name,
+        anatomy=anatomy,
+        template_key=template_key
+    )
     log.debug(f"Looking in work root: {work_root}")
 
+    # Filename
+    file_template = anatomy.get_template_item("work", template_key, "file")
     filename, version = get_last_workfile_with_version(
-        work_root, file_template, data, extensions
+        work_root, str(file_template), data, extensions
     )
 
+    # Full path
     if filename:
         filename = os.path.join(work_root, filename)
+
     return filename, version
 
 

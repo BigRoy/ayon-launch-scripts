@@ -2,21 +2,30 @@ import os
 import platform
 import logging
 from json import JSONDecodeError
-from typing import Optional, Tuple, Dict
+from typing import Optional, List
 
-from openpype.pipeline import LauncherAction
-from openpype.client import get_project
-from openpype.lib import (
-    ApplicationManager,
-    get_openpype_username
-)
-from openpype.settings import get_system_settings
-from openpype.lib.applications import (
-    Application,
-    get_app_environments_for_context,
-)
+from ayon_api import get_project
+import ayon_core.style
+from ayon_core.pipeline import LauncherAction
+from ayon_core.lib import get_ayon_username
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_applications import Application, ApplicationManager
+
+from qtpy import QtGui, QtCore, QtWidgets
 
 log = logging.getLogger(__name__)
+
+
+def get_application_qt_icon(
+        application: Application
+) -> Optional[QtGui.QIcon]:
+    """Return QtGui.QIcon for an Application"""
+    # TODO: Improve workflow to get the icon, remove 'color' hack
+    from ayon_core.tools.launcher.models.actions import get_action_icon
+    from ayon_core.tools.utils.lib import get_qt_icon
+    application.color = "white"
+    return get_qt_icon(get_action_icon(application))
 
 
 def submit_to_deadline(
@@ -67,12 +76,18 @@ def submit_payload_to_deadline(payload: dict) -> str:
         KnownPublishError: if submission fails.
 
     """
-    from openpype_modules.deadline.abstract_submit_deadline import requests_post
+    from ayon_core.modules.deadline.abstract_submit_deadline import requests_post
 
     # Use default url
-    system_settings = get_system_settings()
-    deadline_url = (
-        system_settings["modules"]["deadline"]["deadline_urls"]["default"]
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    deadline_urls = project_settings["deadline"]["deadline_urls"]
+
+    # TODO: Do not force the 'default' entry
+    # TODO: Support the authentication and verify ssl logic of settings
+    deadline_url = next(
+        deadline_info["value"] for deadline_info in deadline_urls
+        if deadline_info["name"] == "default"
     )
 
     url = "{}/api/jobs".format(deadline_url)
@@ -112,20 +127,25 @@ class PublishLastWorkfile(LauncherAction):
         return all(session.get(key) for key in required)
 
     def process(self, session: dict, **kwargs):
-        from openpype_modules.launch_scripts.lib import get_last_workfile_for_task
+        import ayon_launch_scripts.lib
+        import importlib
+        importlib.reload(ayon_launch_scripts.lib)
+        from ayon_launch_scripts.lib import get_last_workfile_for_task
+
+        pos = QtGui.QCursor.pos()
 
         # Get the environment
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session["AVALON_TASK"]
+        project_name = session["AYON_PROJECT_NAME"]
+        folder_path = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
 
         applications = self.get_applications(project_name)
-        result = self.choose_app(applications)
+        result = self.choose_app(applications, pos)
         if not result:
             return
 
-        app_name, app = result
-        app: Application
+        app: Application = result
+        app_name = app.full_name
 
         # TODO: Do not hardcode this here - access them from the hosts, but
         #  we currently cannot access those from outside the hosts/applications
@@ -136,17 +156,11 @@ class PublishLastWorkfile(LauncherAction):
         }[app.host_name]
 
         # Find latest workfile with `AVALON_SCENEDIR` support
-        env = get_app_environments_for_context(project_name,
-                                               asset_name,
-                                               task_name,
-                                               app_name)
-        scene_dir = env.get("AVALON_SCENEDIR")
         workfile, version_number = get_last_workfile_for_task(
             project_name=project_name,
-            asset_name=asset_name,
+            folder_path=folder_path,
             task_name=task_name,
             host_name=app.host_name,
-            scene_dir=scene_dir,
             extensions=extensions
         )
         if not workfile:
@@ -157,7 +171,7 @@ class PublishLastWorkfile(LauncherAction):
             "launch_scripts",
             "publish",
             "--project_name", project_name,
-            "--asset_name", asset_name,
+            "--asset_name", folder_path,
             "--task_name", task_name,
             "--app_name", str(app.full_name),
             "--filepath", workfile
@@ -165,20 +179,26 @@ class PublishLastWorkfile(LauncherAction):
 
         # TODO: Remove the hardcoded scripts and replace it with a simple
         #   GUI the artist can use to decide what to do
-        # Always update containers first
-        args.extend(["-pre", "update_all_containers"])
+        if app.host_name == "maya":
+            args.extend(["-prework", "maya_load_alembic_plugin"])   # fix AbcImport being reported as unknown plugin
+        args.extend(["-pre", "quit_on_no_outdated"])                # do nothing if scene has no outdated content
+        args.extend(["-pre", "update_all_containers"])              # always update all containers
+        if app.host_name == "maya":
+            args.extend(["-pre", "maya_disable_review_instances"])  # headless review publishing doesn't work in maya - lets ignore those
+        args.extend(["-pre", "quit_on_only_workfile_instance"])     # do not publish if only workfile instance is active
+        args.extend(["-pre", "print_instances"])                    # print os.environ
 
         # Define some labeling
         batch_name = f"{project_name} | Publish workfiles"
         filename = os.path.basename(workfile)
-        name = f"{asset_name} > {task_name} > {app_name} | {filename}"
+        name = f"{folder_path} > {task_name} > {app_name} | {filename}"
 
         submit_to_deadline(
             job_info={
                 "Plugin": "OpenPype",
                 "BatchName": batch_name,
                 "Name": name,
-                "UserName": get_openpype_username(),
+                "UserName": get_ayon_username(),
                 "MachineName": platform.node(),
 
                 # Error out early on this job since it's unlikely
@@ -195,55 +215,49 @@ class PublishLastWorkfile(LauncherAction):
         )
 
     @staticmethod
-    def choose_app(
-            applications: Dict[str, Application]
-    ) -> Optional[Tuple[str, Application]]:
-        import openpype.style
-        from qtpy import QtWidgets, QtGui
-        from openpype.tools.launcher.lib import get_action_icon
+    def choose_app(applications: List[Application],
+                   pos: QtCore.QPoint) -> Optional[Application]:
+        """Show menu to choose from list of applications"""
 
         menu = QtWidgets.QMenu()
-        menu.setStyleSheet(openpype.style.load_stylesheet())
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # force garbage collect
+        menu.setStyleSheet(ayon_core.style.load_stylesheet())
 
         # Sort applications
-        applications = sorted(
-            applications.items(),
-            key=lambda item: item[1].name
-        )
+        applications.sort(key=lambda item: item.full_label)
 
-        for app_name, app in applications:
-            label = f"{app.group.label} {app.label}"
-            icon = get_action_icon(app)
-
-            menu_action = QtWidgets.QAction(label, parent=menu)
+        for app in applications:
+            menu_action = QtWidgets.QAction(app.full_label, parent=menu)
+            icon = get_application_qt_icon(app)
             if icon:
                 menu_action.setIcon(icon)
-            menu_action.setData((app_name, app))
+            menu_action.setData(app)
             menu.addAction(menu_action)
 
-        result = menu.exec_(QtGui.QCursor.pos())
+        result = menu.exec_(pos)
         if result:
             return result.data()
 
     @staticmethod
-    def get_applications(project_name: str) -> Dict[str, Application]:
-
+    def get_applications(project_name: str) -> List[Application]:
         # Get applications
         manager = ApplicationManager()
         manager.refresh()
 
-        # Create mongo connection
-        project_doc = get_project(project_name)
-        assert project_doc, "Project not found. This is a bug."
+        project_entity = get_project(
+            project_name=project_name,
+            fields=["attrib.applications"]
+        )
+        assert project_entity, \
+            f"Project {project_name} not found. This is a bug."
 
         # Filter to apps valid for this current project, with logic from:
         # `openpype.tools.launcher.models.ActionModel.get_application_actions`
-        applications = {}
-        for app_def in project_doc["config"]["apps"]:
-            app_name = app_def["name"]
+        applications = []
+        for app_name in project_entity["attrib"]["applications"]:
             app = manager.applications.get(app_name)
             if not app or not app.enabled:
                 continue
-            applications[app_name] = app
+            applications.append(app)
 
         return applications
