@@ -43,27 +43,27 @@ def cli_main():
 @cli_main.command()
 @click_wrap.option("-project", "--project_name",
                    required=True,
-                   envvar="AVALON_PROJECT",
+                   envvar="AYON_PROJECT_NAME",
                    help="Project name")
-@click_wrap.option("-asset", "--asset_name",
+@click_wrap.option("-folder", "--folder_path",
                    required=True,
-                   envvar="AVALON_ASSET",
-                   help="Asset name")
+                   envvar="AYON_FOLDER_PATH",
+                   help="Folder path")
 @click_wrap.option("-task", "--task_name",
                    required=True,
-                   envvar="AVALON_TASK",
+                   envvar="AYON_TASK_NAME",
                    help="Task name")
 @click_wrap.option("-path", "--filepath",
                    required=True,
                    help="Absolute filepath to workfile to publish")
 @click_wrap.option("-app", "--app_name",
-                   envvar="AVALON_APP",
+                   envvar="AYON_APP_NAME",
                    required=True,
                    help="App name, specific variant 'maya/2023' or just 'maya' to "
                         "take latest found variant for which current machine has "
                         "an existing executable.")
 def run_script(project_name,
-               asset_name,
+               folder_path,
                task_name,
                filepath,
                app_name,
@@ -71,7 +71,7 @@ def run_script(project_name,
     app_name = find_app_variant(app_name)
     launched_app = _run_script(
         project_name=project_name,
-        folder_path=asset_name,
+        folder_path=folder_path,
         task_name=task_name,
         app_name=app_name,
         script_path=filepath
@@ -86,21 +86,21 @@ def run_script(project_name,
 @cli_main.command()
 @click_wrap.option("-project", "--project_name",
                    required=True,
-                   envvar="AVALON_PROJECT",
+                   envvar="AYON_PROJECT_NAME",
                    help="Project name")
-@click_wrap.option("-asset", "--asset_name",
+@click_wrap.option("-folder", "--folder_path",
                    required=True,
-                   envvar="AVALON_ASSET",
-                   help="Asset name")
+                   envvar="AYON_FOLDER_PATH",
+                   help="Folder path")
 @click_wrap.option("-task", "--task_name",
                    required=True,
-                   envvar="AVALON_TASK",
+                   envvar="AYON_TASK_NAME",
                    help="Task name")
 @click_wrap.option("-path", "--filepath",
                    required=True,
                    help="Absolute filepath to workfile to publish")
 @click_wrap.option("-app", "--app_name",
-                   envvar="AVALON_APP_NAME",
+                   envvar="AYON_APP_NAME",
                    required=True,
                    help="App name, specific variant 'maya/2023' or just 'maya'"
                         " to take latest found variant for which current"

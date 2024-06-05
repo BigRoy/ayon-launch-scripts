@@ -123,7 +123,7 @@ class PublishLastWorkfile(LauncherAction):
     order = 20
 
     def is_compatible(self, session: dict):
-        required = {"AVALON_PROJECT", "AVALON_ASSET", "AVALON_TASK"}
+        required = {"AYON_PROJECT_NAME", "AYON_FOLDER_PATH", "AYON_TASK_NAME"}
         return all(session.get(key) for key in required)
 
     def process(self, session: dict, **kwargs):
@@ -171,7 +171,7 @@ class PublishLastWorkfile(LauncherAction):
             "launch_scripts",
             "publish",
             "--project_name", project_name,
-            "--asset_name", folder_path,
+            "--folder_path", folder_path,
             "--task_name", task_name,
             "--app_name", str(app.full_name),
             "--filepath", workfile
