@@ -31,7 +31,7 @@ the script in:
 ```shell
 ayon_console addon launch_scriptsrun-script 
 -project my_project
--asset hero
+-folder /asset/char_hero
 -task modeling
 -app maya/2023 
 -path /path/to/script.py
@@ -46,7 +46,7 @@ The module also exposes a `publish` command. Usable like so:
 ```shell
 ayon_console addon launch_scriptspublish
 -project my_project
--asset hero
+-folder /asset/char_hero
 -task modeling
 -app maya/2023 
 -path /path/to/workfile.ma
@@ -90,7 +90,7 @@ As such an example usage against run code could look like:
 ```shell
 ayon-launcher/tools/ayon_console.bat --use-dev addon launch_scripts publish
 -project my_project
--asset hero
+-folder /asset/char_hero
 -task modeling
 -app maya/2023 
 -path /path/to/workfile.ma

@@ -150,7 +150,7 @@ def run_script(
     data.update(dict(
         app_args=app_args,
         project_name=project_name,
-        asset_name=folder_path,
+        folder_path=folder_path,
         task_name=task_name,
         env=env,
         start_last_workfile=start_last_workfile,
