@@ -29,7 +29,7 @@ ayon_console addon launch_scripts run-script -app maya/2023 -path /path/to/scrip
 But in most case you'll need to explicitly provide the context you want to run
 the script in:
 ```shell
-ayon_console addon launch_scriptsrun-script 
+ayon_console addon launch_scripts run-script 
 -project my_project
 -folder /asset/char_hero
 -task modeling
@@ -44,7 +44,7 @@ to the same command and should usually be on a single line._
 The module also exposes a `publish` command. Usable like so:
 
 ```shell
-ayon_console addon launch_scriptspublish
+ayon_console addon launch_scripts publish
 -project my_project
 -folder /asset/char_hero
 -task modeling
