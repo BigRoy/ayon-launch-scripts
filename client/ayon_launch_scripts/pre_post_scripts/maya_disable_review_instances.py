@@ -25,7 +25,7 @@ def main():
             continue
 
         # Consider only review insances
-        if instance.get("family") != "review":
+        if instance.get("productType") != "review":
             continue
 
         log.warning("Disabling review instance: %s", instance.label)

@@ -12,7 +12,7 @@ def iter_instances() -> Generator[str]:
                           long=True):
         if cmds.getAttr(f"{objset}.id") != "pyblish.avalon.instance":
             continue
-        if not cmds.attributeQuery("family", node=objset, exists=True):
+        if not cmds.attributeQuery("productType", node=objset, exists=True):
             continue
 
         yield objset
@@ -33,7 +33,7 @@ def clean_camera_instances():
     """Remove image planes from cameras"""
 
     for objset in iter_instances():
-        if cmds.getAttr(f"{objset}.family") != "camera":
+        if cmds.getAttr(f"{objset}.productType") != "camera":
             continue
 
         members = cmds.sets(objset, query=True)

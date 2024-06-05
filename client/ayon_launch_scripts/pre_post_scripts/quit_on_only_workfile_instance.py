@@ -26,8 +26,8 @@ def main():
         if not instance.get("active"):
             continue
 
-        # Consider only instances that are not of workfile family
-        if instance.get("family") == "workfile":
+        # Consider only instances that are not of workfile product type
+        if instance.get("productType") == "workfile":
             continue
         if "workfile" in instance.get("families", []):
             continue
