@@ -1,7 +1,6 @@
 import os
 import logging
 
-from ayon_core.lib import StringTemplate
 from ayon_applications import ApplicationManager
 from ayon_core.pipeline import (
     registered_host,
