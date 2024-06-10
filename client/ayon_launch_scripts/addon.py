@@ -3,7 +3,7 @@ import os
 import time
 import sys
 
-from ayon_core.modules import click_wrap, AYONAddon, IPluginPaths
+from ayon_core.addon import click_wrap, AYONAddon, IPluginPaths
 
 from .lib import find_app_variant
 from .run_script import (
