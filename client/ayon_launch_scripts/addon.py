@@ -21,7 +21,7 @@ class LaunchScriptsAddon(AYONAddon, IPluginPaths):
         self.enabled = True
 
     def cli(self, click_group):
-        click_group.add_command(cli_main)
+        click_group.add_command(cli_main.to_click_obj())
 
     def get_plugin_paths(self):
         """Implementation of IPluginPaths to get plugin paths."""
