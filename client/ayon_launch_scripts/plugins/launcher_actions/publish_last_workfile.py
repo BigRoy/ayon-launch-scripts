@@ -76,7 +76,7 @@ def submit_payload_to_deadline(payload: dict) -> str:
         KnownPublishError: if submission fails.
 
     """
-    from ayon_core.modules.deadline.abstract_submit_deadline import requests_post
+    from ayon_deadline.abstract_submit_deadline import requests_post
 
     # Use default url
     project_name = get_current_project_name()
