@@ -2,7 +2,7 @@ import os
 import platform
 import logging
 from json import JSONDecodeError
-from typing import Optional, List
+from typing import Optional
 
 from ayon_api import get_project
 import ayon_core.style
@@ -215,7 +215,7 @@ class PublishLastWorkfile(LauncherAction):
         )
 
     @staticmethod
-    def choose_app(applications: List[Application],
+    def choose_app(applications: list[Application],
                    pos: QtCore.QPoint) -> Optional[Application]:
         """Show menu to choose from list of applications"""
 
@@ -239,7 +239,7 @@ class PublishLastWorkfile(LauncherAction):
             return result.data()
 
     @staticmethod
-    def get_applications(project_name: str) -> List[Application]:
+    def get_applications(project_name: str) -> list[Application]:
         # Get applications
         manager = ApplicationManager()
         manager.refresh()
