@@ -167,7 +167,7 @@ class PublishLastWorkfile(LauncherAction):
             raise RuntimeError("No existing workfile found.")
 
         args = [
-            "module",
+            "addon",
             "launch_scripts",
             "publish",
             "--project_name", project_name,
@@ -195,7 +195,7 @@ class PublishLastWorkfile(LauncherAction):
 
         submit_to_deadline(
             job_info={
-                "Plugin": "OpenPype",
+                "Plugin": "Ayon",
                 "BatchName": batch_name,
                 "Name": name,
                 "UserName": get_ayon_username(),
