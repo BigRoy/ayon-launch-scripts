@@ -1,4 +1,4 @@
-from typing import Generator, List
+from typing import Generator
 import logging
 
 from maya import cmds
@@ -18,7 +18,7 @@ def iter_instances() -> Generator[str]:
         yield objset
 
 
-def get_nodes_with_childtype(nodes: List[str], childtype: str) -> List[str]:
+def get_nodes_with_childtype(nodes: list[str], childtype: str) -> list[str]:
     """Return nodes that have a particular node type as child"""
     if not nodes:
         return []
