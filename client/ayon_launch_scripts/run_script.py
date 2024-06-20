@@ -37,7 +37,7 @@ def run_script(
         folder_path (str): The folder path.
         task_name (str): The task name.
         app_name (str): The application name.
-        script_path (List[str]): The python script to run.
+        script_path (str): The python script to run.
         headless (bool): Whether to run headless (True) or try and run with
             a GUI (when False)
         start_last_workfile (booL): Whether to launch with last workfile being
