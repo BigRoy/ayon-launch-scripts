@@ -1,19 +1,19 @@
-import os
 import logging
+import os
+import subprocess
+import sys
+import time
+from typing import Optional
 
 from ayon_applications import ApplicationManager
-from ayon_core.pipeline import (
-    registered_host,
-    Anatomy
-)
+from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline.workfile import (
     get_workfile_template_key_from_context,
     get_last_workfile_with_version,
     get_workdir_with_workdir_data
 )
-from ayon_core.pipeline.template_data import get_template_data_with_names
-
 
 log = logging.getLogger(__name__)
 
@@ -155,3 +155,26 @@ def find_app_variant(app_name, application_manager=None):
             raise ValueError("No executable for {} found".format(app_name))
 
     return f"{host}/{variant_key}"
+
+
+def print_stdout_until_timeout(
+    popen: subprocess.Popen, timeout: Optional[float] = None, app_name: str = None
+):
+    """Print stdout until app close.
+
+    If app remains open for longer than `timeout` then app is terminated.
+
+    """
+    time_start = time.time()
+    prefix = f"{app_name}: " if app_name else " "
+    default_encoding = sys.getdefaultencoding()
+
+    for line in popen.stdout:
+        # Print stdout, remove windows carriage return and decode according to system encoding
+        line = line.replace(b"\r", b"")
+        line_str = line.decode(default_encoding, errors="ignore")
+        print(f"{prefix}{line_str}", end="")
+
+        if timeout and time.time() - time_start > timeout:
+            popen.terminate()
+            raise RuntimeError("Timeout reached")
