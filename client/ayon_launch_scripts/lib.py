@@ -171,7 +171,6 @@ def print_stdout_until_timeout(
 
     for line in popen.stdout:
         # Print stdout, remove windows carriage return and decode according to system encoding
-
         line = line.replace(b"\r", b"")
         line_str = line.decode(default_encoding, errors="ignore")
         print(f"{prefix}{line_str}", end="")
