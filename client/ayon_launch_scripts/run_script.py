@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 
 from ayon_applications import (
     ApplicationManager,
@@ -67,7 +67,11 @@ def run_script(
 
     if env is None:
         env = os.environ.copy()
+
     env.update(app_env)
+
+    # NOTE: forbids ayon to open the last work file if start_last_workfile is false
+    env["AYON_OPEN_WORKFILE_POST_INITIALIZATION"] = "1" if start_last_workfile else "0"
 
     # Application specific arguments to launch script
     host_name = app_name.split("/", 1)[0]
@@ -155,6 +159,7 @@ def run_script(
         env=env,
         start_last_workfile=start_last_workfile,
     ))
+
     context = ApplicationLaunchContext(
         app, executable, **data
     )
