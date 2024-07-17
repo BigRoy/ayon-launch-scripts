@@ -1,11 +1,10 @@
 """Launch scripts addon for AYON."""
 import os
-import time
 import sys
 
 from ayon_core.addon import click_wrap, AYONAddon, IPluginPaths
 
-from .lib import find_app_variant
+from .lib import find_app_variant, print_stdout_until_timeout
 from .run_script import (
     run_script as _run_script
 )
@@ -76,7 +75,8 @@ def run_script(project_name,
         app_name=app_name,
         script_path=filepath
     )
-    _print_stdout_until_timeout(launched_app, timeout, app_name)
+
+    print_stdout_until_timeout(launched_app, timeout, app_name)
 
     launched_app.wait()  # ensure we wait so that we can get the return code
     print(f"Application shut down with returncode: {launched_app.returncode}")
@@ -183,28 +183,9 @@ def publish(project_name,
         script_path=script_path,
         env=env
     )
-    _print_stdout_until_timeout(launched_app, timeout, app_name)
+
+    print_stdout_until_timeout(launched_app, timeout, app_name)
 
     launched_app.wait()  # ensure we wait so that we can get the return code
     print(f"Application shut down with returncode: {launched_app.returncode}")
     sys.exit(launched_app.returncode)  # Transfer the error code
-
-
-def _print_stdout_until_timeout(popen,
-                                timeout=None,
-                                app_name=None):
-    """Print stdout until app close.
-
-    If app remains open for longer than `timeout` then app is terminated.
-
-    """
-    time_start = time.time()
-    prefix = f"{app_name}: " if app_name else " "
-    for line in popen.stdout:
-        # Print stdout
-        line_str = line.decode("utf-8")
-        print(f"{prefix}{line_str}", end='')
-
-        if timeout and time.time() - time_start > timeout:
-            popen.terminate()
-            raise RuntimeError("Timeout reached")
