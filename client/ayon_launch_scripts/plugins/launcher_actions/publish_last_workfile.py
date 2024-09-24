@@ -6,7 +6,10 @@ from typing import Optional
 
 from ayon_core.lib import get_ayon_username
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.pipeline import (
+    HOST_WORKFILE_EXTENSIONS,
+    get_current_project_name
+)
 from ayon_applications import (
     Application,
     ApplicationManager
@@ -161,14 +164,11 @@ class PublishLastWorkfile(LauncherAction):
             return
 
         app_name = app.full_name
-
-        # TODO: Do not hardcode this here - access them from the hosts, but
-        #  we currently cannot access those from outside the hosts/applications
-        extensions = {
-            "houdini": [".hip"],
-            "maya": [".ma", ".mb"],
-            "fusion": [".comp"]
-        }[app.host_name]
+        try:
+            extensions = HOST_WORKFILE_EXTENSIONS[app.host_name]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown extension for host {app.host_name}") from exc
 
         # Find latest workfile with `AVALON_SCENEDIR` support
         workfile, version_number = get_last_workfile_for_task(
