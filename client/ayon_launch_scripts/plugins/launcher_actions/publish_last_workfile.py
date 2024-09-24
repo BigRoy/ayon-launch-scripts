@@ -55,7 +55,9 @@ def submit_to_deadline(
         "AYON_BUNDLE_NAME",
         "AYON_DEFAULT_SETTINGS_VARIANT",
         "AYON_USE_DEV",
-        "AYON_SERVER_URL"
+        "AYON_SERVER_URL",
+        "AYON_USERNAME",
+        "AYON_IN_TESTS"
     ]
     env = {}
     for key in keys:
