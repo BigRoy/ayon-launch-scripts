@@ -4,28 +4,36 @@ import logging
 from json import JSONDecodeError
 from typing import Optional
 
-from ayon_api import get_project
-import ayon_core.style
-from ayon_core.pipeline import LauncherAction
 from ayon_core.lib import get_ayon_username
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import get_current_project_name
-from ayon_applications import Application, ApplicationManager
+from ayon_applications import (
+    Application,
+    ApplicationManager
+)
+from ayon_core.pipeline.actions import LauncherActionSelection
+from ayon_applications.utils import (
+    get_app_icon_path,
+    get_applications_for_context,
+)
+from ayon_core.pipeline import LauncherAction
+from ayon_core.tools.utils.lib import get_qt_icon
+from ayon_core.style import load_stylesheet
 
 from qtpy import QtGui, QtCore, QtWidgets
 
 log = logging.getLogger(__name__)
 
 
-def get_application_qt_icon(
-        application: Application
-) -> Optional[QtGui.QIcon]:
+def get_application_qt_icon(application: Application) -> Optional[QtGui.QIcon]:
     """Return QtGui.QIcon for an Application"""
-    # TODO: Improve workflow to get the icon, remove 'color' hack
-    from ayon_core.tools.launcher.models.actions import get_action_icon
-    from ayon_core.tools.utils.lib import get_qt_icon
-    application.color = "white"
-    return get_qt_icon(get_action_icon(application))
+    icon = application.icon
+    if not icon:
+        return QtGui.QIcon()
+    icon_filepath = get_app_icon_path(icon)
+    if os.path.exists(icon_filepath):
+        return get_qt_icon({"type": "path", "path": icon_filepath})
+    return QtGui.QIcon()
 
 
 def submit_to_deadline(
@@ -122,11 +130,10 @@ class PublishLastWorkfile(LauncherAction):
     color = "#ffffff"
     order = 20
 
-    def is_compatible(self, session: dict):
-        required = {"AYON_PROJECT_NAME", "AYON_FOLDER_PATH", "AYON_TASK_NAME"}
-        return all(session.get(key) for key in required)
+    def is_compatible(self, selection) -> bool:
+        return selection.is_task_selected
 
-    def process(self, session: dict, **kwargs):
+    def process(self, selection, **kwargs):
         import ayon_launch_scripts.lib
         import importlib
         importlib.reload(ayon_launch_scripts.lib)
@@ -135,16 +142,18 @@ class PublishLastWorkfile(LauncherAction):
         pos = QtGui.QCursor.pos()
 
         # Get the environment
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
+        project_name = selection.get_project_name()
+        folder_path = selection.get_folder_path()
+        task_name = selection.get_task_name()
 
-        applications = self.get_applications(project_name)
-        result = self.choose_app(applications, pos)
-        if not result:
+        # Get applications
+        application_manager = ApplicationManager()
+        applications = self.get_project_applications(
+            application_manager, selection)
+        app = self.choose_app(applications, pos)
+        if not app:
             return
 
-        app: Application = result
         app_name = app.full_name
 
         # TODO: Do not hardcode this here - access them from the hosts, but
@@ -215,19 +224,22 @@ class PublishLastWorkfile(LauncherAction):
         )
 
     @staticmethod
-    def choose_app(applications: list[Application],
-                   pos: QtCore.QPoint) -> Optional[Application]:
+    def choose_app(
+        applications: list[Application],
+        pos: QtCore.QPoint,
+        show_variant_name_only: bool = False
+    ) -> Optional[Application]:
         """Show menu to choose from list of applications"""
-
         menu = QtWidgets.QMenu()
         menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)  # force garbage collect
-        menu.setStyleSheet(ayon_core.style.load_stylesheet())
+        menu.setStyleSheet(load_stylesheet())
 
         # Sort applications
         applications.sort(key=lambda item: item.full_label)
 
         for app in applications:
-            menu_action = QtWidgets.QAction(app.full_label, parent=menu)
+            label = app.label if show_variant_name_only else app.full_label
+            menu_action = QtWidgets.QAction(label, parent=menu)
             icon = get_application_qt_icon(app)
             if icon:
                 menu_action.setIcon(icon)
@@ -239,23 +251,24 @@ class PublishLastWorkfile(LauncherAction):
             return result.data()
 
     @staticmethod
-    def get_applications(project_name: str) -> list[Application]:
-        # Get applications
-        manager = ApplicationManager()
-        manager.refresh()
+    def get_project_applications(
+            application_manager: ApplicationManager,
+            selection: LauncherActionSelection) -> list[Application]:
+        """Return the enabled applications for the project"""
 
-        project_entity = get_project(
-            project_name=project_name,
-            fields=["attrib.applications"]
+        application_names = get_applications_for_context(
+            project_name=selection.project_name,
+            folder_entity=selection.folder_entity,
+            task_entity=selection.task_entity,
+            project_settings=selection.get_project_settings(),
+            project_entity=selection.project_entity
         )
-        assert project_entity, \
-            f"Project {project_name} not found. This is a bug."
 
         # Filter to apps valid for this current project, with logic from:
-        # `openpype.tools.launcher.models.ActionModel.get_application_actions`
+        # `ayon_core.tools.launcher.models.actions.ApplicationAction.is_compatible`  # noqa
         applications = []
-        for app_name in project_entity["attrib"]["applications"]:
-            app = manager.applications.get(app_name)
+        for app_name in application_names:
+            app = application_manager.applications.get(app_name)
             if not app or not app.enabled:
                 continue
             applications.append(app)
