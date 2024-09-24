@@ -51,7 +51,11 @@ def submit_to_deadline(
         "FTRACK_API_KEY",
         "FTRACK_API_USER",
         "FTRACK_SERVER",
-        "OPENPYPE_SG_USER"
+        "OPENPYPE_SG_USER",
+        "AYON_BUNDLE_NAME",
+        "AYON_DEFAULT_SETTINGS_VARIANT",
+        "AYON_USE_DEV",
+        "AYON_SERVER_URL"
     ]
     env = {}
     for key in keys:
