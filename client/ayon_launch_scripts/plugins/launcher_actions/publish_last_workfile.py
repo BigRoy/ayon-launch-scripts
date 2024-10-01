@@ -164,7 +164,7 @@ class PublishLastWorkfile(LauncherAction):
         # Get all host extensions
         addons_manager = AddonsManager()
         host_workfile_extensions = {}
-        for addon in addons_manager:
+        for addon in addons_manager.addons:
             if isinstance(addon, IHostAddon):
                 host_workfile_extensions[addon.host_name] = (
                     addon.get_workfile_extensions()
