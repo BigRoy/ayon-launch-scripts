@@ -32,7 +32,7 @@ def get_application_qt_icon(application: Application) -> Optional[QtGui.QIcon]:
     if not icon:
         return QtGui.QIcon()
     icon_filepath = get_app_icon_path(icon)
-    if os.path.exists(icon_filepath):
+    if icon_filepath and os.path.exists(icon_filepath):
         return get_qt_icon({"type": "path", "path": icon_filepath})
     return QtGui.QIcon()
 
