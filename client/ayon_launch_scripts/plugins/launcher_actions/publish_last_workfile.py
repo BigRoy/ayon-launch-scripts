@@ -4,12 +4,10 @@ import logging
 from json import JSONDecodeError
 from typing import Optional
 
+from ayon_core.addon import AddonsManager, IHostAddon
 from ayon_core.lib import get_ayon_username
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    HOST_WORKFILE_EXTENSIONS,
-    get_current_project_name
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_applications import (
     Application,
     ApplicationManager
@@ -163,9 +161,18 @@ class PublishLastWorkfile(LauncherAction):
         if not app:
             return
 
+        # Get all host extensions
+        addons_manager = AddonsManager()
+        host_workfile_extensions = {}
+        for addon in addons_manager:
+            if isinstance(addon, IHostAddon):
+                host_workfile_extensions[addon.host_name] = (
+                    addon.get_workfile_extensions()
+                )
+
         app_name = app.full_name
         try:
-            extensions = HOST_WORKFILE_EXTENSIONS[app.host_name]
+            extensions = host_workfile_extensions[app.host_name]
         except KeyError as exc:
             raise ValueError(
                 f"Unknown extension for host {app.host_name}") from exc
