@@ -188,7 +188,6 @@ def succeed_with_message(message):
     with the job as a "failed job".
     """
     print(message)
-    sys.stdout.flush()  # force flush so the message is visible in Deadline
     os.environ["__PUBLISH_EXIT_AS_SUCCESS"] = "1"
 
 

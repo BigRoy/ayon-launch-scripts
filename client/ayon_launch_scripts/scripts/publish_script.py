@@ -1,4 +1,5 @@
 import os
+import sys
 import runpy
 
 import pyblish.api
@@ -13,9 +14,12 @@ from ayon_launch_scripts.lib import is_success_shutdown
 
 def run_path(path):
     """Run Python script by filepath with current globals"""
-    return runpy.run_path(path,
-                          init_globals=globals(),
-                          run_name='__main__')
+    result = runpy.run_path(path,
+                            init_globals=globals(),
+                            run_name='__main__')
+    sys.stdout.flush()
+    sys.stderr.flush()
+    return result
 
 
 def main():
@@ -73,6 +77,10 @@ def main():
         run_path(script)
         if is_success_shutdown():
             return
+
+    # Force all output to be flushed
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     if not success:
         raise RuntimeError("Errors occurred during publishing.")
