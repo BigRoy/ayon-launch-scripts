@@ -4,6 +4,8 @@ from ayon_core.pipeline.create import CreateContext, CreatedInstance
 from ayon_core.pipeline import registered_host
 from ayon_core.host import IPublishHost
 
+from ayon_launch_scripts import lib
+
 
 def main():
 
@@ -38,7 +40,7 @@ def main():
 
     else:
         # No active non-workfile instance has been found
-        raise RuntimeError(
+        lib.succeed_with_message(
             "No active instances found in the scene that is not a Workfile "
             "instance. Exiting session."
         )

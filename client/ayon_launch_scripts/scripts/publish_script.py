@@ -8,6 +8,8 @@ from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline import registered_host
 from ayon_core.host import IPublishHost
 
+from ayon_launch_scripts.lib import is_success_shutdown
+
 
 def run_path(path):
     """Run Python script by filepath with current globals"""
@@ -49,6 +51,8 @@ def main():
     for script in pre_workfile_scripts:
         print(f"Running pre-workfile script: {script}")
         run_path(script)
+        if is_success_shutdown():
+            return
 
     # Open workfile, the application should've been launched with the matching
     # context for that workfile
@@ -58,6 +62,8 @@ def main():
     for script in pre_publish_scripts:
         print(f"Running pre-publish script: {script}")
         run_path(script)
+        if is_success_shutdown():
+            return
 
     # Trigger publish, catch errors
     success = publish()
@@ -65,6 +71,8 @@ def main():
     for script in post_publish_scripts:
         print(f"Running post-publish script: {script}")
         run_path(script)
+        if is_success_shutdown():
+            return
 
     if not success:
         raise RuntimeError("Errors occurred during publishing.")

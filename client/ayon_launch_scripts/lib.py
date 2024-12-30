@@ -178,3 +178,20 @@ def print_stdout_until_timeout(
         if timeout and time.time() - time_start > timeout:
             popen.terminate()
             raise RuntimeError("Timeout reached")
+
+
+def succeed_with_message(message):
+    """Print message and mark the job as successful.
+
+    This can be used in pre-publish scripts to exit early and mark the job as
+    completed succefully with the provided message instead of forcing to quit
+    with the job as a "failed job".
+    """
+    print(message)
+    sys.stdout.flush()  # force flush so the message is visible in Deadline
+    os.environ["__PUBLISH_EXIT_AS_SUCCESS"] = "1"
+
+
+def is_success_shutdown():
+    """Detects whether `succeed_with_message` was called."""
+    return os.getenv("__PUBLISH_EXIT_AS_SUCCESS") == "1"
