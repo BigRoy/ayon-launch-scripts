@@ -1,11 +1,15 @@
+from __future__ import annotations
 import os
 import platform
 import logging
 from json import JSONDecodeError
-from typing import Optional
+from typing import Optional, Any
 
 from ayon_core.addon import AddonsManager, IHostAddon
-from ayon_core.lib import get_ayon_username
+from ayon_core.lib import (
+    get_ayon_username, BoolDef, UILabelDef,
+    UISeparatorDef
+)
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_project_name
 from ayon_applications import (
@@ -126,6 +130,37 @@ def submit_payload_to_deadline(payload: dict) -> str:
     return result["_id"]
 
 
+def prompt(title: str, attr_defs: list) -> dict[str, Any]:
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+
+    dialog = AttributeDefinitionsDialog(attr_defs)
+    dialog.setWindowTitle(title)
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    values = dialog.get_values()
+
+    # Also include the default values
+    for attr_def in attr_defs:
+        if not hasattr(attr_def, "default_value"):
+            continue
+
+        if attr_def.key not in values:
+            values[attr_def.key] = attr_def.default_value
+
+    dialog.deleteLater()
+    return values
+
+
 class PublishLastWorkfile(LauncherAction):
     """
     Submit a job to deadline that will open the workfile, update all containers
@@ -199,21 +234,84 @@ class PublishLastWorkfile(LauncherAction):
             "--filepath", workfile
         ]
 
-        # TODO: Remove the hardcoded scripts and replace it with a simple
-        #   GUI the artist can use to decide what to do
-        if app.host_name == "maya":
-            args.extend(["-prework", "maya_load_alembic_plugin"])   # fix AbcImport being reported as unknown plugin
-        args.extend(["-pre", "quit_on_no_outdated"])                # do nothing if scene has no outdated content
-        args.extend(["-pre", "update_all_containers"])              # always update all containers
-        if app.host_name == "maya":
-            args.extend(["-pre", "maya_disable_review_instances"])  # headless review publishing doesn't work in maya - lets ignore those
-        args.extend(["-pre", "quit_on_only_workfile_instance"])     # do not publish if only workfile instance is active
-        args.extend(["-pre", "print_instances"])                    # print os.environ
-
         # Define some labeling
         batch_name = f"{project_name} | Publish workfiles"
         filename = os.path.basename(workfile)
         name = f"{folder_path} > {task_name} > {app_name} | {filename}"
+
+
+        # In Houdini, we mostly use this to update 'assemblies' and we only
+        # really care about publishing (usually) if the scene has outdated
+        # containers
+        quit_on_no_outdated_default = app.host_name == "houdini"
+
+        # Allow user to toggle certain options for the submission
+        choices = prompt(
+            title=f"Publish workfile on farm",
+            attr_defs=[
+                UILabelDef(
+                    label=(
+                        f"Would you like to publish the workfile on the farm?"
+                        "<br>"
+                        "<br>"
+                        f"<b>{folder_path} > {task_name}</b><br>"
+                        f"{filename} ({app_name})<br>"
+                    )
+                ),
+                UISeparatorDef(),
+                BoolDef(
+                    "update_all_containers",
+                    label="Update all outdated containers in workfile.",
+                    default=True,
+                    tooltip=(
+                        "Update everything to the latest version inside the "
+                        "scene file before publishing."
+                    ),
+                ),
+                BoolDef(
+                    "quit_on_no_outdated",
+                    label="Skip if no outdated containers in workfile.",
+                    default=quit_on_no_outdated_default,
+                    tooltip=(
+                        "Do not continue publishing if there are no outdated "
+                        "containers in the workfile."
+                    ),
+                ),
+                BoolDef(
+                    "quit_on_only_workfile_instance",
+                    label="Skip if only workfile publish instance is enabled.",
+                    tooltip=(
+                        "If no publish instance is enabled in the workfile, "
+                        "or only the workfile publish instance then skip "
+                        "publishing."
+                    ),
+                    default=True,
+                ),
+            ]
+        )
+        if choices is None:
+            # user cancelled
+            return
+
+        # The order can be important here. Also note that some always apply
+        # and are not an artist choice - just because they are always relevant.
+        if app.host_name == "maya":
+            # fix AbcImport being reported as unknown plugin
+            args.extend(["-prework", "maya_load_alembic_plugin"])
+        if choices["quit_on_no_outdated"]:
+            # do nothing if scene has no outdated content
+            args.extend(["-pre", "quit_on_no_outdated"])
+        if choices["update_all_containers"]:
+            # update all outdated containers
+            args.extend(["-pre", "update_all_containers"])
+        args.extend(["-pre", "update_all_containers"])
+        if app.host_name == "maya":
+            # headless review publishing doesn't work in maya - we skip them
+            args.extend(["-pre", "maya_disable_review_instances"])
+        if choices["quit_on_only_workfile_instance"]:
+            # do not publish if only workfile instance is active
+            args.extend(["-pre", "quit_on_only_workfile_instance"])
+        args.extend(["-pre", "print_instances"])  # print os.environ
 
         submit_to_deadline(
             job_info={
