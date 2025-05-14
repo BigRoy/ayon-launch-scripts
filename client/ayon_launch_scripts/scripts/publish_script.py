@@ -121,6 +121,11 @@ def publish():
             context=pyblish_context,
             plugins=pyblish_plugins
     ):
+        # Print progress for the Deadline Ayon Plug-in to set the jobs
+        # progress.
+        if "progress" in result:
+            print("Publishing Progress: {}%".format(result["progress"]))
+
         for record in result["records"]:
             print("{}: {}".format(result["plugin"].label, record.msg))
 
