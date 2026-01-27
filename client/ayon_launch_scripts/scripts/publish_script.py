@@ -114,6 +114,12 @@ def publish():
         pyblish_context = pyblish.api.Context()  # pyblish default behavior
         pyblish_plugins = pyblish.api.discover()  # pyblish default behavior
 
+    # Set publish comment from environment variable if provided
+    comment = os.environ.get("PUBLISH_COMMENT")
+    if comment:
+        pyblish_context.data["comment"] = comment
+        print(f"Publish comment set: {comment}")
+
     # TODO: Allow a validation to occur and potentially allow certain "Actions"
     #   to trigger on Validators (or other plugins?) if they exist
 
