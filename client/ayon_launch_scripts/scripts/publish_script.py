@@ -63,6 +63,24 @@ def main():
     print(f"Opening workfile: {filepath}")
     host.open_file(filepath)
 
+    # Save workfile to AYON work directory if --save-as flag is set
+    save_as = os.environ.get("PUBLISH_SAVE_AS", "").lower() in ("1", "true", "yes")
+    if save_as:
+        print("Saving workfile to AYON work directory with proper versioning...")
+        try:
+            from ayon_core.pipeline.workfile.utils import save_next_version
+            save_next_version()
+            saved_path = host.get_current_workfile()
+            if saved_path:
+                print(f"Successfully saved workfile to: {saved_path}")
+            else:
+                print("Warning: Workfile saved but could not retrieve saved path")
+        except Exception as e:
+            print(f"ERROR: Failed to save workfile: {e}")
+            import traceback
+            traceback.print_exc()
+            raise RuntimeError(f"Failed to save workfile to AYON work directory: {e}")
+
     for script in pre_publish_scripts:
         print(f"Running pre-publish script: {script}")
         run_path(script)

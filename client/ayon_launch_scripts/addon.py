@@ -116,6 +116,11 @@ def run_script(project_name,
                    help="Post process script path")
 @click_wrap.option("-c", "--comment",
                    help="Publish comment")
+@click_wrap.option("--save-as", "save_as",
+                   is_flag=True,
+                   default=False,
+                   help="Save workfile to AYON work directory with "
+                        "proper versioning before publishing")
 def publish(project_name,
             folder_path,
             task_name,
@@ -125,7 +130,8 @@ def publish(project_name,
             pre_publish_script=None,
             post_publish_script=None,
             comment=None,
-            timeout=None):
+            timeout=None,
+            save_as=False):
     """Publish a workfile standalone for a host."""
 
     # The entry point should be a script that opens the workfile since the
@@ -169,6 +175,9 @@ def publish(project_name,
 
     if comment:
         env["PUBLISH_COMMENT"] = comment
+
+    if save_as:
+        env["PUBLISH_SAVE_AS"] = "1"
 
     script_path = os.path.join(os.path.dirname(__file__),
                                "scripts",
