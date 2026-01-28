@@ -11,15 +11,16 @@ from ayon_core.pipeline.workfile.utils import save_next_version
 def main():
     print("Saving workfile to AYON work directory with proper versioning...")
     try:
-        save_next_version()
         host = registered_host()
+        source_path = host.get_current_workfile()
+        print(f"Source workfile path: {source_path}")
+        save_next_version()
         saved_path = host.get_current_workfile()
         if saved_path:
             print(f"Successfully saved workfile to: {saved_path}")
         else:
             print("Warning: Workfile saved but could not retrieve saved path")
     except Exception as e:
-        print(f"ERROR: Failed to save workfile: {e}")
         import traceback
         traceback.print_exc()
         raise RuntimeError(f"Failed to save workfile to AYON work directory: {e}")
