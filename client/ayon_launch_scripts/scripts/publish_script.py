@@ -101,6 +101,7 @@ def _quit_application():
     if getattr(host, "name", None) == "photoshop":
         try:
             from ayon_photoshop.api.launch_logic import stub
+            stub().revert_to_previous()
             stub().close()
         except Exception:
             pass
