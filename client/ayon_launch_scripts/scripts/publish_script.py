@@ -98,24 +98,12 @@ def _quit_application():
     """Force quit the host application without saving."""
     host = registered_host()
 
-    # For Photoshop, close all documents without saving, then quit
     if getattr(host, "name", None) == "photoshop":
         try:
             from ayon_photoshop.api.launch_logic import stub
-            ps_stub = stub()
-            ps_stub.close_all_documents(save_changes=False)
-            ps_stub.close()
+            stub().close()
         except Exception:
             pass
-
-    # Fallback: quit Qt app
-    try:
-        from qtpy import QtWidgets
-        app = QtWidgets.QApplication.instance()
-        if app:
-            app.quit()
-    except Exception:
-        pass
 
 
 def publish():
