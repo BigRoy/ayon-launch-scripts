@@ -6,6 +6,7 @@ import runpy
 
 import pyblish.api
 import pyblish.util
+from pyblish.api import ValidatorOrder
 
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline import registered_host
@@ -129,10 +130,10 @@ def publish():
         pyblish_context.data["comment"] = comment
         print(f"Publish comment set: {comment}")
 
-    # TODO: Allow a validation to occur and potentially allow certain "Actions"
-    #   to trigger on Validators (or other plugins?) if they exist
-
+    # Collect all validation errors instead of stopping at first one
+    validation_errors = []
     current_plugin_id = None
+
     for result in pyblish.util.publish_iter(
             context=pyblish_context,
             plugins=pyblish_plugins
@@ -158,15 +159,35 @@ def publish():
             if not result["error"]:
                 report_maker.set_plugin_passed(plugin.id)
 
-        # Exit as soon as any error occurs.
+        # Handle errors
         if result["error"]:
-            # TODO: For new style publisher we only want to DIRECTLY stop
-            #  on any error if it's not a Validation error, otherwise we'd want
-            #  to report all validation errors
+            # Check if plugin is a Validator (order >= 1.0 and < 2.0)
+            is_validator = (
+                plugin and
+                ValidatorOrder <= plugin.order < ValidatorOrder + 1.0
+            )
+
+            if is_validator:
+                # Collect validation error, continue to run remaining validators
+                validation_errors.append(result)
+            else:
+                # Non-validator error: stop immediately
+                error_message = error_format.format(**result)
+                print(error_message)
+                _save_report(pyblish_context, report_maker)
+                return False
+
+    # After all plugins: check if we had validation errors
+    if validation_errors:
+        print("=" * 80)
+        print(f"VALIDATION FAILED: {len(validation_errors)} error(s)")
+        print("=" * 80)
+        for idx, result in enumerate(validation_errors, 1):
             error_message = error_format.format(**result)
-            print(error_message)
-            _save_report(pyblish_context, report_maker)
-            return False
+            print(f"  [{idx}] {error_message}")
+        print("=" * 80)
+        _save_report(pyblish_context, report_maker)
+        return False
 
     _save_report(pyblish_context, report_maker)
     return True
