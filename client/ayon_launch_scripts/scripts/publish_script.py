@@ -76,6 +76,13 @@ def main():
     # Trigger publish, catch errors
     success = publish()
 
+    # Skip post-publish scripts and quit on failure
+    if not success:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        _quit_application()
+        raise RuntimeError("Errors occurred during publishing.")
+
     for script in post_publish_scripts:
         print(f"Running post-publish script: {script}")
         run_path(script)
@@ -86,8 +93,16 @@ def main():
     sys.stdout.flush()
     sys.stderr.flush()
 
-    if not success:
-        raise RuntimeError("Errors occurred during publishing.")
+
+def _quit_application():
+    """Force quit the host application."""
+    try:
+        from qtpy import QtWidgets
+        app = QtWidgets.QApplication.instance()
+        if app:
+            app.quit()
+    except Exception:
+        pass
 
 
 def publish():
