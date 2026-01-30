@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 import sys
 import runpy
 
@@ -8,6 +10,7 @@ import pyblish.util
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline import registered_host
 from ayon_core.host import IPublishHost
+from ayon_core.tools.publisher.models.publish import PublishReportMaker
 
 from ayon_launch_scripts.lib import is_success_shutdown
 
@@ -109,10 +112,16 @@ def publish():
         pyblish_context = pyblish.api.Context()
         pyblish_context.data["create_context"] = create_context
         pyblish_plugins = create_context.publish_plugins
+        report_maker = PublishReportMaker(
+            create_context.creator_discover_result,
+            create_context.convertor_discover_result,
+            create_context.publish_discover_result,
+        )
     else:
         # Legacy publisher host
         pyblish_context = pyblish.api.Context()  # pyblish default behavior
         pyblish_plugins = pyblish.api.discover()  # pyblish default behavior
+        report_maker = None
 
     # Set publish comment from environment variable if provided
     comment = os.environ.get("PUBLISH_COMMENT")
@@ -123,6 +132,7 @@ def publish():
     # TODO: Allow a validation to occur and potentially allow certain "Actions"
     #   to trigger on Validators (or other plugins?) if they exist
 
+    current_plugin_id = None
     for result in pyblish.util.publish_iter(
             context=pyblish_context,
             plugins=pyblish_plugins
@@ -132,8 +142,21 @@ def publish():
         if "progress" in result:
             print("Publishing Progress: {}%".format(result["progress"]))
 
-        for record in result["records"]:
-            print("{}: {}".format(result["plugin"].label, record.msg))
+        plugin = result.get("plugin")
+        if plugin:
+            for record in result["records"]:
+                print("{}: {}".format(plugin.label, record.msg))
+        else:
+            for record in result["records"]:
+                print(record.msg)
+
+        if report_maker and plugin:
+            if plugin.id != current_plugin_id:
+                report_maker.add_plugin_iter(plugin.id, pyblish_context)
+                current_plugin_id = plugin.id
+            report_maker.add_result(plugin.id, result)
+            if not result["error"]:
+                report_maker.set_plugin_passed(plugin.id)
 
         # Exit as soon as any error occurs.
         if result["error"]:
@@ -142,9 +165,29 @@ def publish():
             #  to report all validation errors
             error_message = error_format.format(**result)
             print(error_message)
+            _save_report(pyblish_context, report_maker)
             return False
 
+    _save_report(pyblish_context, report_maker)
     return True
+
+
+def _save_report(pyblish_context, report_maker):
+    report_path = os.environ.get("PUBLISH_REPORT_PATH")
+    if not report_path or report_maker is None:
+        return
+
+    report_data = report_maker.get_report(pyblish_context)
+    report_path_obj = Path(report_path)
+    if (report_path_obj.exists() and report_path_obj.is_dir()) or report_path.endswith(os.sep):
+        report_dir = report_path_obj
+        workfile_path = os.environ.get("PUBLISH_WORKFILE", "")
+        report_path_obj = report_dir / f"{Path(workfile_path).stem}_publish_report.json"
+    else:
+        report_dir = report_path_obj.parent
+    report_dir.mkdir(parents=True, exist_ok=True)
+    with open(report_path_obj, "w") as stream:
+        json.dump(report_data, stream, indent=2)
 
 
 if __name__ == "__main__":
