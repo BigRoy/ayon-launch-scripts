@@ -80,7 +80,9 @@ def main():
     if not success:
         sys.stdout.flush()
         sys.stderr.flush()
-        _quit_application()
+        if _quit_application():
+            # Photoshop: async exit scheduled, just return to let Qt exit cleanly
+            return
         raise RuntimeError("Errors occurred during publishing.")
 
     for script in post_publish_scripts:
@@ -95,7 +97,12 @@ def main():
 
 
 def _quit_application():
-    """Force quit the host application without saving."""
+    """Force quit the host application without saving.
+    
+    Returns:
+        bool: True if async exit was scheduled (caller should just return),
+              False if caller should raise an exception.
+    """
     host = registered_host()
 
     if getattr(host, "name", None) == "photoshop":
@@ -104,13 +111,13 @@ def _quit_application():
             # Revert changes and close Photoshop cleanly
             stub().revert_to_previous()
             stub().close()
-            # Exit the Python wrapper process
+            # Schedule Qt event loop exit - will happen after callback returns
             ProcessLauncher.get_instance().exit()
         except Exception:
             pass
-        
-        # Force exit the subprocess
-        sys.exit(1)
+        return True  # Async exit scheduled, caller should just return
+    
+    return False  # Other hosts: caller should raise exception
 
 
 def publish():
