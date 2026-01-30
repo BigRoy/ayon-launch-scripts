@@ -108,6 +108,9 @@ def _quit_application():
             ProcessLauncher.get_instance().exit()
         except Exception:
             pass
+        
+        # Force exit the subprocess
+        sys.exit(1)
 
 
 def publish():
