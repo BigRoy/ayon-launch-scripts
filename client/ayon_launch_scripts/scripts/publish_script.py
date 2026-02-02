@@ -202,7 +202,7 @@ def publish():
                 # Non-validator error: stop immediately
                 error_message = error_format.format(**result)
                 print(error_message)
-                _save_report(pyblish_context, report_maker)
+                _save_report(pyblish_context, report_maker, success=False)
                 return False
 
     # After all plugins: check if we had validation errors
@@ -214,29 +214,50 @@ def publish():
             error_message = error_format.format(**result)
             print(f"  [{idx}] {error_message}")
         print("=" * 80)
-        _save_report(pyblish_context, report_maker)
+        _save_report(pyblish_context, report_maker, success=False)
         return False
 
-    _save_report(pyblish_context, report_maker)
+    _save_report(pyblish_context, report_maker, success=True)
     return True
 
 
-def _save_report(pyblish_context, report_maker):
+def _save_report(pyblish_context, report_maker, success: bool):
+    """Save publish report to the configured path.
+    
+    Args:
+        pyblish_context: The pyblish context.
+        report_maker: The PublishReportMaker instance.
+        success: Whether the publish succeeded. When report path is a 
+            directory, reports are automatically organized into 'success/' 
+            or 'failed/' subdirectories.
+    """
     report_path = os.environ.get("PUBLISH_REPORT_PATH")
     if not report_path or report_maker is None:
         return
 
     report_data = report_maker.get_report(pyblish_context)
     report_path_obj = Path(report_path)
-    if (report_path_obj.exists() and report_path_obj.is_dir()) or report_path.endswith(os.sep):
-        report_dir = report_path_obj
+    
+    # Check if path is a directory (exists as dir or ends with separator)
+    is_directory = (
+        (report_path_obj.exists() and report_path_obj.is_dir()) 
+        or report_path.endswith(os.sep)
+    )
+    
+    if is_directory:
+        # Auto-organize into success/failed subdirectories
+        status_subdir = "success" if success else "failed"
+        report_dir = report_path_obj / status_subdir
         workfile_path = os.environ.get("PUBLISH_WORKFILE", "")
         report_path_obj = report_dir / f"{Path(workfile_path).stem}_publish_report.json"
     else:
         report_dir = report_path_obj.parent
+        
     report_dir.mkdir(parents=True, exist_ok=True)
     with open(report_path_obj, "w") as stream:
         json.dump(report_data, stream, indent=2)
+    
+    print(f"Publish report saved to: {report_path_obj}")
 
 
 if __name__ == "__main__":
