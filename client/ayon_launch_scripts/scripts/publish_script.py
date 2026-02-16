@@ -80,7 +80,6 @@ def main():
     if not success:
         sys.stdout.flush()
         sys.stderr.flush()
-        _quit_application()  # For Photoshop: exits via sys.exit(1)
         raise RuntimeError("Errors occurred during publishing.")
 
     for script in post_publish_scripts:
@@ -93,29 +92,6 @@ def main():
     sys.stdout.flush()
     sys.stderr.flush()
 
-
-def _quit_application():
-    """Force quit the host application without saving.
-    
-    For Photoshop: closes PS cleanly then exits via sys.exit(1).
-    For other hosts: returns False so caller can raise an exception.
-    """
-    host = registered_host()
-
-    if getattr(host, "name", None) == "photoshop":
-        try:
-            from ayon_photoshop.api.launch_logic import stub, ProcessLauncher
-            # Revert changes and close Photoshop cleanly
-            stub().revert_to_previous()
-            stub().close()
-            # Schedule Qt event loop exit
-            ProcessLauncher.get_instance().exit()
-        except Exception:
-            pass
-        # Exit the process - SystemExit will propagate through runpy
-        sys.exit(1)
-    
-    return False  # Other hosts: caller should raise exception
 
 
 def publish():
@@ -158,10 +134,9 @@ def publish():
         pyblish_context.data["comment"] = comment
         print(f"Publish comment set: {comment}")
 
-    # Collect all validation errors instead of stopping at first one
+    # Collect all validation errors
     validation_errors = []
     current_plugin_id = None
-
     for result in pyblish.util.publish_iter(
             context=pyblish_context,
             plugins=pyblish_plugins
@@ -238,25 +213,19 @@ def _save_report(pyblish_context, report_maker, success: bool):
     report_data = report_maker.get_report(pyblish_context)
     report_path_obj = Path(report_path)
     
-    # Check if path is a directory (exists as dir or ends with separator)
-    is_directory = (
-        (report_path_obj.exists() and report_path_obj.is_dir()) 
-        or report_path.endswith(os.sep)
-    )
-    
-    if is_directory:
+    if report_path_obj.is_dir():
         # Auto-organize into success/failed subdirectories
         status_subdir = "success" if success else "failed"
         report_dir = report_path_obj / status_subdir
         workfile_path = os.environ.get("PUBLISH_WORKFILE", "")
-        report_path_obj = report_dir / f"{Path(workfile_path).stem}_publish_report.json"
+        report_path_obj = report_dir / f"{Path(workfile_path).stem}.json"
     else:
         report_dir = report_path_obj.parent
         
     report_dir.mkdir(parents=True, exist_ok=True)
-    with open(report_path_obj, "w") as stream:
+    with report_path_obj.open("w") as stream:
         json.dump(report_data, stream, indent=2)
-    
+
     print(f"Publish report saved to: {report_path_obj}")
 
 

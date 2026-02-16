@@ -117,7 +117,9 @@ def run_script(project_name,
 @click_wrap.option("-c", "--comment",
                    help="Publish comment")
 @click_wrap.option("-r", "--report-path",
-                   help="Path to save publish report JSON file")
+                   help=(
+                    "Path to save publish report JSON. "
+                    "Directory: organized under 'success/' or 'failed/'."))
 def publish(project_name,
             folder_path,
             task_name,
