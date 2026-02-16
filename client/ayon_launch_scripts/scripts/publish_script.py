@@ -1,13 +1,17 @@
+import json
 import os
+from pathlib import Path
 import sys
 import runpy
 
 import pyblish.api
 import pyblish.util
+from pyblish.api import ValidatorOrder
 
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline import registered_host
 from ayon_core.host import IPublishHost
+from ayon_core.tools.publisher.models.publish import PublishReportMaker
 
 from ayon_launch_scripts.lib import is_success_shutdown
 
@@ -72,6 +76,12 @@ def main():
     # Trigger publish, catch errors
     success = publish()
 
+    # Skip post-publish scripts and quit on failure
+    if not success:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        raise RuntimeError("Errors occurred during publishing.")
+
     for script in post_publish_scripts:
         print(f"Running post-publish script: {script}")
         run_path(script)
@@ -82,8 +92,6 @@ def main():
     sys.stdout.flush()
     sys.stderr.flush()
 
-    if not success:
-        raise RuntimeError("Errors occurred during publishing.")
 
 
 def publish():
@@ -109,10 +117,16 @@ def publish():
         pyblish_context = pyblish.api.Context()
         pyblish_context.data["create_context"] = create_context
         pyblish_plugins = create_context.publish_plugins
+        report_maker = PublishReportMaker(
+            create_context.creator_discover_result,
+            create_context.convertor_discover_result,
+            create_context.publish_discover_result,
+        )
     else:
         # Legacy publisher host
         pyblish_context = pyblish.api.Context()  # pyblish default behavior
         pyblish_plugins = pyblish.api.discover()  # pyblish default behavior
+        report_maker = None
 
     # Set publish comment from environment variable if provided
     comment = os.environ.get("PUBLISH_COMMENT")
@@ -120,9 +134,9 @@ def publish():
         pyblish_context.data["comment"] = comment
         print(f"Publish comment set: {comment}")
 
-    # TODO: Allow a validation to occur and potentially allow certain "Actions"
-    #   to trigger on Validators (or other plugins?) if they exist
-
+    # Collect all validation errors
+    validation_errors = []
+    current_plugin_id = None
     for result in pyblish.util.publish_iter(
             context=pyblish_context,
             plugins=pyblish_plugins
@@ -132,19 +146,87 @@ def publish():
         if "progress" in result:
             print("Publishing Progress: {}%".format(result["progress"]))
 
-        for record in result["records"]:
-            print("{}: {}".format(result["plugin"].label, record.msg))
+        plugin = result.get("plugin")
+        if plugin:
+            for record in result["records"]:
+                print("{}: {}".format(plugin.label, record.msg))
+        else:
+            for record in result["records"]:
+                print(record.msg)
 
-        # Exit as soon as any error occurs.
+        if report_maker and plugin:
+            if plugin.id != current_plugin_id:
+                report_maker.add_plugin_iter(plugin.id, pyblish_context)
+                current_plugin_id = plugin.id
+            report_maker.add_result(plugin.id, result)
+            if not result["error"]:
+                report_maker.set_plugin_passed(plugin.id)
+
+        # Handle errors
         if result["error"]:
-            # TODO: For new style publisher we only want to DIRECTLY stop
-            #  on any error if it's not a Validation error, otherwise we'd want
-            #  to report all validation errors
-            error_message = error_format.format(**result)
-            print(error_message)
-            return False
+            # Check if plugin is a Validator (order >= 1.0 and < 2.0)
+            is_validator = (
+                plugin and
+                ValidatorOrder <= plugin.order < ValidatorOrder + 1.0
+            )
 
+            if is_validator:
+                # Collect validation error, continue to run remaining validators
+                validation_errors.append(result)
+            else:
+                # Non-validator error: stop immediately
+                error_message = error_format.format(**result)
+                print(error_message)
+                _save_report(pyblish_context, report_maker, success=False)
+                return False
+
+    # After all plugins: check if we had validation errors
+    if validation_errors:
+        print("=" * 80)
+        print(f"VALIDATION FAILED: {len(validation_errors)} error(s)")
+        print("=" * 80)
+        for idx, result in enumerate(validation_errors, 1):
+            error_message = error_format.format(**result)
+            print(f"  [{idx}] {error_message}")
+        print("=" * 80)
+        _save_report(pyblish_context, report_maker, success=False)
+        return False
+
+    _save_report(pyblish_context, report_maker, success=True)
     return True
+
+
+def _save_report(pyblish_context, report_maker, success: bool):
+    """Save publish report to the configured path.
+    
+    Args:
+        pyblish_context: The pyblish context.
+        report_maker: The PublishReportMaker instance.
+        success: Whether the publish succeeded. When report path is a 
+            directory, reports are automatically organized into 'success/' 
+            or 'failed/' subdirectories.
+    """
+    report_path = os.environ.get("PUBLISH_REPORT_PATH")
+    if not report_path or report_maker is None:
+        return
+
+    report_data = report_maker.get_report(pyblish_context)
+    report_path_obj = Path(report_path)
+    
+    if report_path_obj.is_dir():
+        # Auto-organize into success/failed subdirectories
+        status_subdir = "success" if success else "failed"
+        report_dir = report_path_obj / status_subdir
+        workfile_path = os.environ.get("PUBLISH_WORKFILE", "")
+        report_path_obj = report_dir / f"{Path(workfile_path).stem}.json"
+    else:
+        report_dir = report_path_obj.parent
+        
+    report_dir.mkdir(parents=True, exist_ok=True)
+    with report_path_obj.open("w") as stream:
+        json.dump(report_data, stream, indent=2)
+
+    print(f"Publish report saved to: {report_path_obj}")
 
 
 if __name__ == "__main__":

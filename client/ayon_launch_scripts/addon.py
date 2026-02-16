@@ -116,6 +116,10 @@ def run_script(project_name,
                    help="Post process script path")
 @click_wrap.option("-c", "--comment",
                    help="Publish comment")
+@click_wrap.option("-r", "--report-path",
+                   help=(
+                    "Path to save publish report JSON. "
+                    "Directory: organized under 'success/' or 'failed/'."))
 def publish(project_name,
             folder_path,
             task_name,
@@ -125,7 +129,8 @@ def publish(project_name,
             pre_publish_script=None,
             post_publish_script=None,
             comment=None,
-            timeout=None):
+            timeout=None,
+            report_path=None):
     """Publish a workfile standalone for a host."""
 
     # The entry point should be a script that opens the workfile since the
@@ -169,6 +174,8 @@ def publish(project_name,
 
     if comment:
         env["PUBLISH_COMMENT"] = comment
+    if report_path:
+        env["PUBLISH_REPORT_PATH"] = report_path
 
     script_path = os.path.join(os.path.dirname(__file__),
                                "scripts",
