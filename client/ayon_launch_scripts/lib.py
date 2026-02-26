@@ -169,6 +169,9 @@ def print_stdout_until_timeout(
     prefix = f"{app_name}: " if app_name else " "
     default_encoding = sys.getdefaultencoding()
 
+    if popen.stdout is None:
+        return
+
     for line in popen.stdout:
         # Print stdout, remove windows carriage return and decode according to system encoding
         line = line.replace(b"\r", b"")
