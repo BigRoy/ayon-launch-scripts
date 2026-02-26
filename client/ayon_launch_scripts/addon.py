@@ -1,15 +1,17 @@
 """Launch scripts addon for AYON."""
 import os
 import sys
+import runpy
 
 from ayon_core.addon import click_wrap, AYONAddon, IPluginPaths
+from ayon_core.lib.events import register_event_callback
 
+from .host_helpers import get_connection_helper
 from .lib import find_app_variant, print_stdout_until_timeout
 from .run_script import (
     run_script as _run_script
 )
 from .version import __version__
-
 
 class LaunchScriptsAddon(AYONAddon, IPluginPaths):
     label = "Publish Workfile"
@@ -31,6 +33,39 @@ class LaunchScriptsAddon(AYONAddon, IPluginPaths):
                                      "plugins",
                                      "launcher_actions")],
         }
+
+    def on_host_install(self, host, host_name, project_name):
+        script_paths_str = os.environ.get("LAUNCH_SCRIPTS_SCRIPT_PATHS", "")
+        if not script_paths_str:
+            return
+
+        script_paths = [
+            path for path in script_paths_str.split(os.pathsep) if path.strip()
+        ]
+        if not script_paths:
+            return
+
+        def _on_application_launched(event=None):
+            self._execute_scripts(host, script_paths)
+
+        self._application_launched_callback = _on_application_launched
+        register_event_callback("application.launched", _on_application_launched)
+
+    def _execute_scripts(self, host, script_paths):
+        script_error = None
+        try:
+            for script_path in script_paths:
+                runpy.run_path(script_path, run_name="__main__")
+        except Exception as exc:
+            script_error = exc
+
+        helper = get_connection_helper(host)
+        if helper:
+            helper.close_application()
+            helper.force_exit()
+
+        if script_error:
+            sys.exit(1)
 
 
 @click_wrap.group(LaunchScriptsAddon.name,
@@ -68,12 +103,19 @@ def run_script(project_name,
                app_name,
                timeout=None):
     app_name = find_app_variant(app_name)
+    # Set AYON context environment variables
+    env = os.environ.copy()
+    env["AYON_PROJECT_NAME"] = project_name
+    env["AYON_FOLDER_PATH"] = folder_path
+    env["AYON_TASK_NAME"] = task_name
+    
     launched_app = _run_script(
         project_name=project_name,
         folder_path=folder_path,
         task_name=task_name,
         app_name=app_name,
-        script_path=filepath
+        script_path=filepath,
+        env=env
     )
 
     print_stdout_until_timeout(launched_app, timeout, app_name)
@@ -143,6 +185,10 @@ def publish(project_name,
 
     # Pass specific arguments to the publish script using environment variables
     env = os.environ.copy()
+    # Set AYON context environment variables
+    env["AYON_PROJECT_NAME"] = project_name
+    env["AYON_FOLDER_PATH"] = folder_path
+    env["AYON_TASK_NAME"] = task_name
     env["PUBLISH_WORKFILE"] = filepath
 
     # Process scripts input arguments
