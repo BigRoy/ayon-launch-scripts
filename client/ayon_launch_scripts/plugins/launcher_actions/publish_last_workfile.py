@@ -58,11 +58,14 @@ def submit_to_deadline(
         "FTRACK_SERVER",
         "OPENPYPE_SG_USER",
         "AYON_BUNDLE_NAME",
-        "AYON_DEFAULT_SETTINGS_VARIANT",
-        "AYON_USE_DEV",
+        "AYON_STUDIO_BUNDLE_NAME",
+        "AYON_USE_STAGING",
+        "AYON_USE_DEV",  # TODO: Not sure if needed?
         "AYON_SERVER_URL",
         "AYON_USERNAME",
         "AYON_IN_TESTS"
+        # DEPRECATED remove when deadline stops using it (added in 1.1.2)
+        "AYON_DEFAULT_SETTINGS_VARIANT",
     ]
     env = {}
     for key in keys:
