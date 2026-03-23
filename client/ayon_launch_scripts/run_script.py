@@ -155,6 +155,10 @@ def run_script(
         env=env,
         start_last_workfile=start_last_workfile,
     ))
+
+    # Enforce the output to not be redirected to process monitor because
+    # otherwise we can't print any stdout here from the process
+    app.redirect_output = False
     context = ApplicationLaunchContext(
         app, executable, **data
     )
