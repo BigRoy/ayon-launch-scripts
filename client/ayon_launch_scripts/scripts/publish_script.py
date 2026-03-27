@@ -9,6 +9,7 @@ from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline import registered_host
 from ayon_core.host import IPublishHost
 
+from ayon_launch_scripts.host_helpers import get_connection_helper
 from ayon_launch_scripts.lib import is_success_shutdown
 
 
@@ -25,6 +26,11 @@ def run_path(path):
 def main():
     host = registered_host()
     assert host, "Host must already be installed and registered."
+    helper = get_connection_helper(host)
+
+    # Wait for host connection before any host operations.
+    if helper:
+        helper.await_connection()
 
     # Get required inputs
     filepath = os.environ["PUBLISH_WORKFILE"]
@@ -63,11 +69,19 @@ def main():
     print(f"Opening workfile: {filepath}")
     host.open_file(filepath)
 
+    # Re-verify connection after file open (heavy operation)
+    if helper:
+        helper.stabilize_after_operation("file_open")
+
     for script in pre_publish_scripts:
         print(f"Running pre-publish script: {script}")
         run_path(script)
         if is_success_shutdown():
             return
+
+    # Re-await connection after pre-publish scripts (save operations may disrupt it)
+    if helper:
+        helper.stabilize_after_operation("pre_publish_scripts")
 
     # Trigger publish, catch errors
     success = publish()
@@ -122,6 +136,12 @@ def publish():
 
     # TODO: Allow a validation to occur and potentially allow certain "Actions"
     #   to trigger on Validators (or other plugins?) if they exist
+
+    # Re-verify host connection before running publish plugins.
+    host = registered_host()
+    helper = get_connection_helper(host)
+    if helper:
+        helper.await_connection(required_consecutive=5, stabilization_delay=2.0)
 
     for result in pyblish.util.publish_iter(
             context=pyblish_context,

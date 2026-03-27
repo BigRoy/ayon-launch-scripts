@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+from typing import Iterable, Union
 
 from ayon_applications import (
     ApplicationManager,
@@ -10,6 +11,7 @@ from ayon_applications import (
     ApplicationExecutable
 )
 from ayon_applications.utils import get_app_environments_for_context
+from ayon_core.addon import AddonsManager
 
 
 def get_relative_executable(executable: ApplicationExecutable,
@@ -25,7 +27,7 @@ def run_script(
     folder_path: str,
     task_name: str,
     app_name: str,
-    script_path: str,
+    script_path: Union[str, Iterable[str]],
     headless: bool = True,
     start_last_workfile: bool = False,
     env: dict = None
@@ -37,7 +39,7 @@ def run_script(
         folder_path (str): The folder path.
         task_name (str): The task name.
         app_name (str): The application name.
-        script_path (str): The python script to run.
+        script_path (Union[str, Iterable[str]]): The python script(s) to run.
         headless (bool): Whether to run headless (True) or try and run with
             a GUI (when False)
         start_last_workfile (booL): Whether to launch with last workfile being
@@ -45,7 +47,7 @@ def run_script(
         env (dict): Base environment to work with.
 
     Returns:
-        Popen: The Blender process.
+        Popen: The launched application process.
     """
 
     application_manager = ApplicationManager()
@@ -76,8 +78,22 @@ def run_script(
 
     # Find the relevant host addon specific run script entry point
     # TODO: This should be moved to the relevant addons as an interface instead
+    # Photoshop
+    if host_name == "photoshop":
+        # Get implementation envs from the addon (standard AYON way)
+        manager = AddonsManager()
+        photoshop_addon = manager.get("photoshop")
+        if photoshop_addon:
+            photoshop_addon.add_implementation_envs(env, app)
+
+        script_paths = [script_path] if isinstance(script_path, str) else script_path
+        env["LAUNCH_SCRIPTS_SCRIPT_PATHS"] = os.pathsep.join(script_paths)
+        # Suppress workfiles dialog; scripts run on application.launched and open the file
+        env["AYON_PHOTOSHOP_WORKFILES_ON_LAUNCH"] = "0"
+        # No app_args needed - Photoshop prelaunch hook handles launch_script.py
+
     # Blender
-    if host_name == "blender":
+    elif host_name == "blender":
         if headless:
             app_args.append("-b")
 
