@@ -26,8 +26,16 @@ def main():
     host = registered_host()
     assert host, "Host must already be installed and registered."
 
-    # Get required inputs
-    filepath = os.environ["PUBLISH_WORKFILE"]
+    filepath = (
+        os.environ.get("PUBLISH_WORKFILE")
+        or os.environ.get("AYON_LAST_WORKFILE")
+    )
+    if not filepath:
+        raise RuntimeError(
+            "Missing publish workfile path in environment. "
+            "Use --filepath or ensure start_last_workfile hooks resolved "
+            "AYON_LAST_WORKFILE."
+        )
 
     # Get optional inputs
     pre_workfile_scripts = [

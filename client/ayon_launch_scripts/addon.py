@@ -53,8 +53,8 @@ def cli_main():
                    envvar="AYON_TASK_NAME",
                    help="Task name")
 @click_wrap.option("-path", "--filepath",
-                   required=True,
-                   help="Absolute filepath to workfile to publish")
+                   required=False,
+                   help="Optional absolute filepath override to workfile")
 @click_wrap.option("-app", "--app_name",
                    envvar="AYON_APP_NAME",
                    required=True,
@@ -64,8 +64,8 @@ def cli_main():
 def run_script(project_name,
                folder_path,
                task_name,
-               filepath,
                app_name,
+               filepath=None,
                timeout=None):
     app_name = find_app_variant(app_name)
     launched_app = _run_script(
@@ -73,7 +73,8 @@ def run_script(project_name,
         folder_path=folder_path,
         task_name=task_name,
         app_name=app_name,
-        script_path=filepath
+        script_path=filepath,
+        start_last_workfile=filepath is None,
     )
 
     print_stdout_until_timeout(launched_app, timeout, app_name)
@@ -97,8 +98,8 @@ def run_script(project_name,
                    envvar="AYON_TASK_NAME",
                    help="Task name")
 @click_wrap.option("-path", "--filepath",
-                   required=True,
-                   help="Absolute filepath to workfile to publish")
+                   required=False,
+                   help="Optional absolute filepath override to workfile")
 @click_wrap.option("-app", "--app_name",
                    envvar="AYON_APP_NAME",
                    required=True,
@@ -119,7 +120,7 @@ def run_script(project_name,
 def publish(project_name,
             folder_path,
             task_name,
-            filepath,
+            filepath=None,
             app_name=None,
             pre_workfile_script=None,
             pre_publish_script=None,
@@ -181,6 +182,7 @@ def publish(project_name,
         task_name=task_name,
         app_name=app_name,
         script_path=script_path,
+        start_last_workfile=filepath is None,
         env=env
     )
 
