@@ -40,14 +40,13 @@ def run_script(
         script_path (str): The python script to run.
         headless (bool): Whether to run headless (True) or try and run with
             a GUI (when False)
-        start_last_workfile (booL): Whether to launch with last workfile being
+        start_last_workfile (bool): Whether to launch with last workfile being
             opened directly.
         env (dict): Base environment to work with.
 
     Returns:
         Popen: The Blender process.
     """
-
     application_manager = ApplicationManager()
     app = application_manager.applications.get(app_name)
     if not app:

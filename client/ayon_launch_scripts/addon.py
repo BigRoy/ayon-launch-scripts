@@ -117,6 +117,14 @@ def run_script(project_name,
                    help="Post process script path")
 @click_wrap.option("-c", "--comment",
                    help="Publish comment")
+@click_wrap.option(
+    "--start-last-workfile",
+    is_flag=True,
+    help=(
+        "Whether the launcher should open the task's last workfile via "
+        "standard startup flow. Obliterted if a filepath is provided."
+    ),
+)
 def publish(project_name,
             folder_path,
             task_name,
@@ -126,7 +134,8 @@ def publish(project_name,
             pre_publish_script=None,
             post_publish_script=None,
             comment=None,
-            timeout=None):
+            timeout=None,
+            start_last_workfile=False):
     """Publish a workfile standalone for a host."""
 
     # The entry point should be a script that opens the workfile since the
@@ -182,7 +191,9 @@ def publish(project_name,
         task_name=task_name,
         app_name=app_name,
         script_path=script_path,
-        start_last_workfile=filepath is None,
+        start_last_workfile=(
+            filepath is None and start_last_workfile
+        ),
         env=env
     )
 
