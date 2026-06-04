@@ -122,7 +122,7 @@ def run_script(project_name,
     is_flag=True,
     help=(
         "Whether the launcher should open the task's last workfile via "
-        "standard startup flow. Obliterted if a filepath is provided."
+        "standard startup flow. Unused if a filepath is provided."
     ),
 )
 def publish(project_name,
