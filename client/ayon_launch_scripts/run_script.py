@@ -9,7 +9,6 @@ from ayon_applications import (
     ApplicationLaunchContext,
     ApplicationExecutable
 )
-from ayon_applications.utils import get_app_environments_for_context
 
 
 def get_relative_executable(executable: ApplicationExecutable,
@@ -56,17 +55,8 @@ def run_script(
     if not executable:
         raise ApplicationExecutableNotFound(app)
 
-    # Must-have for proper launch of app
-    app_env = get_app_environments_for_context(
-        project_name,
-        folder_path,
-        task_name,
-        app_name
-    )
-
     if env is None:
         env = os.environ.copy()
-    env.update(app_env)
 
     # Application specific arguments to launch script
     host_name = app_name.split("/", 1)[0]
